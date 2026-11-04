@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-50 font-sans text-slate-800 antialiased;
+}
+
+@media print {
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+  .lg\:pl-60 {
+    padding-left: 0 !important;
+  }
+  body {
+    background: white;
+  }
+}
