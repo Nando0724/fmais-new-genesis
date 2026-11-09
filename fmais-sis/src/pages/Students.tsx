@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import NewStudentModal from "../components/NewStudentModal";
 import { Badge, Button, Card, Empty, Input, PageHeader, Progress, Select, Table, Td, Th, type Tone } from "../components/ui";
 import { balance, consecutiveAbsences, currentSchedule, hoursAttended, isAboutToGrad, lastAttended, liveLedger, needsVerification, programOf, progressPct } from "../lib/calc";
+import { lastSap, SAP_RANK } from "../lib/sap";
 import { useStore } from "../lib/store";
 import type { EnrollmentStatus } from "../lib/types";
 import { downloadFile, fmtDate, fullName, money, toCSV, today } from "../lib/utils";
@@ -52,6 +53,8 @@ export default function Students() {
         : flag === "balance" ? r.bal > 0
         : flag === "grad" ? isAboutToGrad(r.s, db)
         : flag === "verify" ? toVerify.has(r.s.id)
+        : flag === "sap" ? (() => { const l = lastSap(r.s.id, db)?.overall; return !!l && SAP_RANK[l] <= SAP_RANK.Below; })()
+        : flag === "probation" ? !!r.s.probation
         : r.abs >= db.settings.absenceThreshold)
       .sort((a, b) => a.s.lastName.localeCompare(b.s.lastName));
   }, [db, q, program, status, schedule, flag, instructor, record, isInstructor, user, toVerify]);
@@ -110,6 +113,8 @@ export default function Students() {
             <option value="">Sin filtro especial</option>
             {!isInstructor && <option value="balance">Con balance pendiente</option>}
             {!isInstructor && <option value="verify">Ledger por verificar</option>}
+            <option value="sap">Último SAP Critical o Bajo OK</option>
+            <option value="probation">En probation</option>
             <option value="grad">Por graduar</option>
             <option value="absent">Ausencias consecutivas</option>
           </Select>

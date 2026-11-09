@@ -1,6 +1,6 @@
 # FMAIS — Sistema Administrativo Centralizado (reemplazo de Genesis-SMSS)
 
-**Fecha:** 2026-11-09 · **Estado:** v0.3 — especificación alineada con el manual oficial de Genesis-SMSS (`genesis-manual.pdf`, 115 págs.). Lo nuevo de v0.3 está marcado con 🆕. **Las fases 1 a 4 (§11) ya están en la demo**; el resto de lo marcado 🆕 aún no. Preguntas abiertas en §12.
+**Fecha:** 2026-11-09 · **Estado:** v0.3 — especificación alineada con el manual oficial de Genesis-SMSS (`genesis-manual.pdf`, 115 págs.). Lo nuevo de v0.3 está marcado con 🆕. **Las fases 1 a 5 (§11) ya están en la demo**; el resto de lo marcado 🆕 aún no. Preguntas abiertas en §12.
 
 ## 1. Objetivo
 
@@ -184,6 +184,10 @@ Roles: `owner`, `admin`, `admissions`, `registrar`, `finance`, `instructor` (sol
 
 ### 5.3 SAP
 - **Académico (cualitativo):** promedio ponderado = Exam × peso + Written × peso + Requirement × (100 − los otros dos). Solo cuentan funciones activas cuando el estudiante se inscribió.
+  - Exam y Written: promedio de los %; un 0 es "completado sin nota" y no entra.
+  - Requirement: unidades hechas / unidades esperadas para las horas que lleva (tope 100). No se evalúa hasta la primera unidad o el primer midpoint.
+  - Si una categoría aún no tiene datos, su peso se reparte entre las demás. *(Regla de la demo: confirmar con la escuela.)*
+- **Niveles:** debajo del mínimo Critical = Critical; entre Critical y OK = Bajo OK; OK; Superior.
 - **Asistencia (cuantitativo):** horas asistidas / horas programadas.
 - El resultado se compara con los niveles **Critical / OK / Superior** del programa; el SAP general es el **más bajo** de los dos.
 - Se calcula en la ficha (botón), en lote desde la cola de midpoints y en el reporte de evaluación a cualquier fecha. Cada cálculo se guarda en `sap_evaluations`.
@@ -309,7 +313,7 @@ El flujo completo ya se puede probar en **Marketing** (`src/pages/Marketing.tsx`
 | 2 ✅ | Estudiantes: alta (desde lead / inscripción / manual) con campos obligatorios, aviso de duplicados, auto-ledger y alta de estudiantes que ya venían cursando (horas importadas + fecha de inicio de conteo); ficha Detail (Auto Zero EFC, Exceptions) + Enrollment; lista con búsqueda y filtros por instructor y registro. **Hecha en la demo** (2026-11-09). |
 | 3 ✅ | Ledger con las reglas de §5.1: tipos (cargo, pago, cargo con pago automático enlazado), cuenta en todo asiento, institucional, anular con motivo en vez de borrar, reembolsos como pago negativo, auto-post, recibo con número e impresión, creado/modificado por y "por verificar" con marca de verificado. Solo Dueño, Administrador y Finanzas escriben. Balance, Cobros y Reportes ignoran los anulados. (Sin overtime: no se cobra.) **Hecha en la demo** (2026-11-09). |
 | 4 ✅ | Asistencia **en lote** por fecha, programa y horario (prellenada con el horario, Presente / Ausente / Excusado, "Procesar" guarda solo lo nuevo o cambiado); horas programadas vs. asistidas y % de asistencia (§5.2) con horas excusadas según la política SAP; Check Attendance (quién no ha llegado con teléfono y WhatsApp, Llegó / Salió con la hora actual) y hojas de firma imprimibles; Salidas sin marcar (Check Swipes); Centro de alertas en el Dashboard según rol y los interruptores de Automatizaciones. **Hecha en la demo** (2026-11-09). |
-| 5 | Académico (Exam / Written / Requirement) individual y **en lote**, **SAP** y cola de **midpoints**, colocación |
+| 5 ✅ | Académico (Exam / Written / Requirement) individual y **en lote** (0 = completado sin nota); **SAP** en la ficha a cualquier fecha, con historial (`sap_evaluations`) y propuesta de probation; cola de **midpoints** con SAP en lote, "revisado" y "volver a mostrar" (`midpoint_events`); colocación de graduados por rango con % State Board y % colocados; alertas de midpoints por revisar y SAP Critical sin probation. **Hecha en la demo** (2026-11-09). |
 | 6 | **Desembolso en lote**, catálogo completo de reportes (§5.6), etiquetas |
 | 7 | CRM de admisiones + seguimientos + integración con el portal de inscripción |
 | 8 | Migración de datos de Genesis y corte |

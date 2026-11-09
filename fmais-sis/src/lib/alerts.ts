@@ -1,6 +1,7 @@
 // Centro de alertas: reemplaza las ventanas que Genesis abre al iniciar sesión
 // (Check Swipes, Check Midpoints, Consecutive Absences, About To Grad…).
-import { attendancePct, consecutiveAbsences, isAboutToGrad, liveLedger, midpointsReached, missingOuts, needsVerification, planStatus, programOf } from "./calc";
+import { attendancePct, consecutiveAbsences, isAboutToGrad, liveLedger, missingOuts, needsVerification, planStatus, programOf } from "./calc";
+import { lastSap, pendingMidpoints } from "./sap";
 import type { DB, User } from "./types";
 import { addDays, diffDays, today } from "./utils";
 
@@ -38,10 +39,11 @@ export function buildAlerts(db: DB, user?: User): Alert[] {
     });
     if (low.length) out.push({ id: "low_attendance", title: "Asistencia por debajo del mínimo", detail: "Horas asistidas / programadas por debajo del nivel OK del SAP del programa.", count: low.length, tone: "amber", to: "/attendance?tab=alerts" });
     if (db.settings.checkMidpointsOnLogin) {
-      const since = addDays(T, -14);
-      const mids = active.flatMap((s) => midpointsReached(s, db)).filter((m) => m.date && m.date >= since);
-      if (mids.length) out.push({ id: "midpoints", title: "Midpoints alcanzados (14 días)", detail: "Revisar el SAP y, si aplica, pedir el desembolso de ayuda financiera.", count: mids.length, tone: "blue", to: "/attendance?tab=alerts" });
+      const mids = pendingMidpoints(db).filter((m) => mine(m.student.id));
+      if (mids.length) out.push({ id: "midpoints", title: "Midpoints por revisar", detail: "Calcular el SAP y, si aplica, pedir el desembolso de ayuda financiera.", count: mids.length, tone: "blue", to: "/academic?tab=midpoints" });
     }
+    const crit = active.filter((s) => lastSap(s.id, db)?.overall === "Critical" && !s.probation);
+    if (crit.length) out.push({ id: "sap_critical", title: "SAP Critical sin probation", detail: "Su último SAP guardado es Critical y todavía no se decidió la probation.", count: crit.length, tone: "red", to: "/students?flag=sap" });
     const grad = active.filter((s) => isAboutToGrad(s, db));
     if (grad.length) out.push({ id: "about_to_grad", title: "Por graduar", detail: `Les faltan ${db.settings.aboutToGradHours} horas o menos.`, count: grad.length, tone: "green", to: "/attendance?tab=alerts" });
     const loa = db.students.filter((s) => mine(s.id) && s.loas.some((l) => l.end && l.end >= T && l.end <= addDays(T, 14)));

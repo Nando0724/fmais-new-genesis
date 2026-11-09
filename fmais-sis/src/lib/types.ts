@@ -291,6 +291,38 @@ export interface Grade {
   unitsDone?: number;
 }
 
+// ── SAP y midpoints (fase 5) ─────────────────────────────────────────
+// Below = entre Critical y OK. El SAP general es el más bajo de académico y asistencia.
+export type SapLevel = "Critical" | "Below" | "OK" | "Superior";
+
+export interface SapEvaluation {
+  id: string;
+  studentId: string;
+  asOf: string; // fecha de corte del cálculo
+  academicPct?: number; // undefined = todavía sin notas
+  attendancePct?: number;
+  academic?: SapLevel;
+  attendance?: SapLevel;
+  overall?: SapLevel;
+  hoursAttended: number;
+  hoursScheduled: number;
+  midpoint?: number; // unidades del midpoint que lo originó
+  verifiedPolicy: boolean; // false = se calculó con los valores de ejemplo
+  by?: string;
+  at: string;
+}
+
+/** Midpoint alcanzado y revisado (Check Midpoints de Genesis). Si no hay registro, está pendiente. */
+export interface MidpointReview {
+  id: string;
+  studentId: string;
+  units: number;
+  reachedOn: string;
+  sapId?: string;
+  by?: string;
+  at: string;
+}
+
 export type PaymentMethod = "Card" | "Affirm" | "FMAIS Plan" | "Zelle" | "Cash" | "Check";
 
 export interface LedgerEntry {
@@ -495,6 +527,8 @@ export interface DB {
   students: Student[];
   attendance: AttendanceRecord[];
   grades: Grade[];
+  sapEvaluations: SapEvaluation[];
+  midpointReviews: MidpointReview[];
   ledger: LedgerEntry[];
   plans: PaymentPlan[];
   emails: EmailLog[];

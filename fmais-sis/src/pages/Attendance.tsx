@@ -5,10 +5,11 @@ import { useToast } from "../components/Layout";
 import { Badge, Button, Card, Empty, Field, Input, PageHeader, Select, Table, Tabs, Td, Th } from "../components/ui";
 import { sendTemplate } from "../lib/actions";
 import {
-  adjustmentsOn, attendancePct, consecutiveAbsences, currentScheduleId, inLOA, isAboutToGrad, isScheduledDay, lastAttended, midpointsReached,
+  adjustmentsOn, attendancePct, consecutiveAbsences, currentScheduleId, inLOA, isAboutToGrad, isScheduledDay, lastAttended,
   missingOuts, programOf, remainingHours, scheduledHours, scheduleOn, trackedHoursUntil,
 } from "../lib/calc";
 import { printSignInSheets } from "../lib/print";
+import { pendingMidpoints } from "../lib/sap";
 import { useStore } from "../lib/store";
 import type { AttendanceRecord, DB, Student, User } from "../lib/types";
 import { addDays, DAY_SHORT, displayName, fmtDate, fullName, hoursBetween, parseDate, today, uid } from "../lib/utils";
@@ -381,8 +382,8 @@ function Alerts() {
   const active = db.students.filter((s) => s.status === "Enrolled" && (user?.role !== "instructor" || s.instructorId === user.id));
   const absences = active.map((s) => ({ s, n: consecutiveAbsences(s, db) })).filter((x) => x.n >= db.settings.absenceThreshold).sort((a, b) => b.n - a.n);
   const grad = active.filter((s) => isAboutToGrad(s, db)).sort((a, b) => remainingHours(a, db) - remainingHours(b, db));
-  const since = addDays(today(), -14);
-  const mids = active.flatMap((s) => midpointsReached(s, db).map((m, i) => ({ s, i, ...m }))).filter((m) => m.date && m.date >= since);
+  const activeIds = new Set(active.map((s) => s.id));
+  const mids = pendingMidpoints(db).filter((m) => activeIds.has(m.student.id));
   const loaEnding = db.students.filter((s) => s.status === "LOA" || s.loas.some((l) => l.end && l.end >= today() && l.end <= addDays(today(), 14)));
   const low = active
     .map((s) => ({ s, pct: attendancePct(s, db), min: programOf(s, db)?.sap.attendance.ok }))
@@ -444,20 +445,20 @@ function Alerts() {
         </Table>
         {!grad.length && <Empty>Nadie cerca de graduarse.</Empty>}
       </Card>
-      <Card title="Midpoints alcanzados (últimos 14 días)">
+      <Card title={`Midpoints pendientes de revisar (${mids.length})`} actions={<Link to="/academic?tab=midpoints" className="text-xs font-medium text-brand-600 hover:underline">Revisar con SAP →</Link>}>
         <Table>
           <thead><tr><Th>Estudiante</Th><Th>Midpoint</Th><Th>Fecha</Th></tr></thead>
           <tbody>
-            {mids.map((m) => (
-              <tr key={m.s.id + m.i}>
-                <Td><Link to={`/students/${m.s.id}?tab=attendance`} className="font-medium hover:underline">{displayName(m.s)}</Link></Td>
-                <Td>MP{m.i + 1} · {m.units} h</Td>
-                <Td>{fmtDate(m.date)}</Td>
+            {mids.slice(0, 15).map((m) => (
+              <tr key={m.student.id + m.units}>
+                <Td><Link to={`/students/${m.student.id}?tab=sap`} className="font-medium hover:underline">{displayName(m.student)}</Link></Td>
+                <Td>MP{m.number} · {m.units} h</Td>
+                <Td>{fmtDate(m.reachedOn)}</Td>
               </tr>
             ))}
           </tbody>
         </Table>
-        {!mids.length && <Empty>Sin midpoints recientes.</Empty>}
+        {!mids.length && <Empty>Sin midpoints pendientes.</Empty>}
       </Card>
       <Card title="Leave of Absence">
         <Table>

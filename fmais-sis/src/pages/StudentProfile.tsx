@@ -5,14 +5,16 @@ import AttendanceTab from "../components/student/AttendanceTab";
 import DetailTab from "../components/student/DetailTab";
 import EnrollmentTab from "../components/student/EnrollmentTab";
 import LedgerTab from "../components/student/LedgerTab";
+import SapTab, { SapBadge } from "../components/student/SapTab";
 import { DocumentsTab, HistoryTab, NotesTab, PlacementTab, SummaryTab } from "../components/student/OtherTabs";
 import { Badge, Button, Card, Empty, Tabs } from "../components/ui";
 import { balance, currentSchedule, hoursAttended, lastAttended, programOf, projectedGrad } from "../lib/calc";
+import { lastSap } from "../lib/sap";
 import { useStore } from "../lib/store";
 import { fmtDate, fullName, money } from "../lib/utils";
 import { STATUS_LABEL, STATUS_TONE } from "./Students";
 
-type Tab = "summary" | "detail" | "enrollment" | "academic" | "attendance" | "ledger" | "placement" | "documents" | "notes" | "history";
+type Tab = "summary" | "detail" | "enrollment" | "academic" | "attendance" | "sap" | "ledger" | "placement" | "documents" | "notes" | "history";
 
 export default function StudentProfile() {
   const { id } = useParams();
@@ -28,6 +30,7 @@ export default function StudentProfile() {
     { id: "enrollment", label: "Inscripción" },
     { id: "academic", label: "Académico" },
     { id: "attendance", label: "Asistencia" },
+    { id: "sap", label: "SAP" },
     ...(!instructor ? [{ id: "ledger" as Tab, label: "Ledger y pagos" }] : []),
     { id: "placement", label: "Colocación" },
     { id: "documents", label: "Documentos" },
@@ -38,6 +41,7 @@ export default function StudentProfile() {
   const program = programOf(s, db);
   const sch = currentSchedule(s, db);
   const bal = balance(s.id, db);
+  const sap = lastSap(s.id, db);
 
   return (
     <div>
@@ -53,6 +57,7 @@ export default function StudentProfile() {
             <Badge tone={STATUS_TONE[s.status]}>{STATUS_LABEL[s.status]}</Badge>
             <Badge tone={s.record === "Active" ? "green" : "slate"}>Registro {s.record === "Active" ? "activo" : "inactivo"}</Badge>
             {s.probation && <Badge tone="red">Probation {s.probation}</Badge>}
+            {sap?.overall && <span className="flex items-center gap-1 text-xs text-slate-500">Último SAP ({fmtDate(sap.asOf)}): <SapBadge level={sap.overall} /></span>}
             <span className="ml-auto font-mono text-sm text-slate-500">Badge # {s.badge}</span>
           </div>
           <Info label="Programa" value={program?.name} />
@@ -75,6 +80,7 @@ export default function StudentProfile() {
         {tab === "enrollment" && <EnrollmentTab s={s} />}
         {tab === "academic" && <AcademicTab s={s} />}
         {tab === "attendance" && <AttendanceTab s={s} />}
+        {tab === "sap" && <SapTab s={s} />}
         {tab === "ledger" && !instructor && <LedgerTab s={s} />}
         {tab === "placement" && <PlacementTab s={s} />}
         {tab === "documents" && <DocumentsTab s={s} />}

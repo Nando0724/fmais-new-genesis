@@ -2,6 +2,7 @@
 // este archivo por llamadas a Supabase (mismas colecciones, ver supabase/schema.sql).
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ensurePhase1 } from "./config";
+import { ensurePhase5 } from "./sap";
 import { buildSeed } from "./seed";
 import { ensureMarketing } from "./seedMarketing";
 import type { Collection, DB, EmailLog, Role, Settings, User } from "./types";
@@ -10,15 +11,15 @@ import { nowISO, uid } from "./utils";
 const DB_KEY = "fmais-sis-db-v1";
 const USER_KEY = "fmais-sis-user";
 
-export type Area = "dashboard" | "crm" | "marketing" | "enrollments" | "students" | "billing" | "attendance" | "reports" | "settings";
+export type Area = "dashboard" | "crm" | "marketing" | "enrollments" | "students" | "academic" | "billing" | "attendance" | "reports" | "settings";
 
 const ACCESS: Record<Role, Area[]> = {
-  owner: ["dashboard", "crm", "marketing", "enrollments", "students", "billing", "attendance", "reports", "settings"],
-  admin: ["dashboard", "crm", "marketing", "enrollments", "students", "billing", "attendance", "reports", "settings"],
+  owner: ["dashboard", "crm", "marketing", "enrollments", "students", "academic", "billing", "attendance", "reports", "settings"],
+  admin: ["dashboard", "crm", "marketing", "enrollments", "students", "academic", "billing", "attendance", "reports", "settings"],
   admissions: ["dashboard", "crm", "marketing", "enrollments", "students", "reports"],
-  registrar: ["dashboard", "enrollments", "students", "attendance", "reports"],
+  registrar: ["dashboard", "enrollments", "students", "academic", "attendance", "reports"],
   finance: ["dashboard", "enrollments", "students", "billing", "reports"],
-  instructor: ["students", "attendance"],
+  instructor: ["students", "academic", "attendance"],
 };
 
 export const canAccess = (role: Role | undefined, area: Area) => !!role && ACCESS[role].includes(area);
@@ -46,7 +47,7 @@ function load(): DB {
   try {
     const raw = localStorage.getItem(DB_KEY);
     // ensureMarketing completa datos guardados antes de que existiera el módulo de marketing.
-    if (raw) return ensurePhase1(ensureMarketing(JSON.parse(raw)));
+    if (raw) return ensurePhase5(ensurePhase1(ensureMarketing(JSON.parse(raw))));
   } catch {
     /* almacenamiento no disponible */
   }

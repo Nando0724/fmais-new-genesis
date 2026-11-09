@@ -59,12 +59,13 @@ Mientras los valores de SAP no estén confirmados, el programa muestra la etique
 | **Formulario web** (`/#/form`) | Formulario público bilingüe para captar leads, con casilla de consentimiento de marketing (sin marcar). Acepta `?utm_campaign=`. |
 | **Marketing** | Campañas por Constant Contact (simulado). El agente de IA (simulado) prepara el borrador a partir de un segmento y un template, escribe un párrafo personalizado para cada contacto y deja notas: exclusiones, hora sugerida y advertencias. Una persona revisa la vista previa con contactos reales en su idioma y aprueba, programa, envía o rechaza. Hay campañas recurrentes (bienvenida). Los resultados (aperturas, clics, bajas) vuelven al historial del lead, y un clic crea una tarea de llamada para el asesor. Pestañas: Segmentos, Templates, Contactos y consentimiento, Constant Contact. Lo pueden usar los roles Dueño, Administrador y Admisiones. |
 | **Inscripciones** | Solicitudes de inscripción en línea con sus 7 pasos, estado y depósito. Permite enviar un recordatorio para continuar y crear el estudiante cuando la solicitud está completa. |
-| **Estudiantes** | Lista con búsqueda (nombre en cualquier orden, badge, email, celular) y filtros por estado, registro, programa, horario, instructor, balance pendiente, por graduar y ausencias. Exportación a CSV. Los instructores no ven balances. |
+| **Estudiantes** | Lista con búsqueda (nombre en cualquier orden, badge, email, celular) y filtros por estado, registro, programa, horario, instructor, balance pendiente, ledger por verificar, último SAP bajo, probation, por graduar y ausencias. Exportación a CSV. Los instructores no ven balances. |
 | **Nuevo estudiante** | Trae los datos de un lead del CRM, marca en amarillo los campos obligatorios, avisa si ya existe alguien con el mismo email o celular y permite elegir si se cargan los costos del programa (auto-ledger). Para quien ya venía cursando en Genesis se ponen las horas hechas y la fecha desde la que se cuenta la asistencia, sin cargar día por día. |
-| **Ficha del estudiante** | Encabezado igual al de Genesis y pestañas: Resumen, Detalle, Inscripción, Académico, Asistencia, Ledger y pagos, Colocación, Documentos, Notas e Historial. |
+| **Ficha del estudiante** | Encabezado igual al de Genesis y pestañas: Resumen, Detalle, Inscripción, Académico, Asistencia, **SAP**, Ledger y pagos, Colocación, Documentos, Notas e Historial. |
 | **Cobros** | Planes de pago automáticos y por Zelle, con estado (vencido, vence pronto, al día). Envía recordatorios de Zelle en lote, ejecuta los cobros automáticos del día (simulados), registra los Zelle recibidos y guarda el registro de emails. |
 | **Asistencia** | **En lote** por fecha, programa y horario: viene prellenada con el horario, se marca Presente / Ausente / Excusado y "Procesar" guarda solo lo nuevo o cambiado. **Check Attendance**: quién no ha llegado (con teléfono y WhatsApp) y quién está en clase, con botones Llegó / Salió. **Hojas de firma** imprimibles. **Salidas sin marcar** para completar. **Alertas**: ausencias consecutivas, asistencia bajo el mínimo del SAP, por graduar, midpoints y LOA. |
-| **Centro de alertas** | En el Dashboard, según el rol: salidas sin marcar, ausencias, asistencia baja, midpoints, por graduar, LOA que terminan, pagos vencidos, asientos por verificar y licencia por vencer. Cada aviso lleva a donde se resuelve. |
+| **Académico** | **Notas en lote**: programa → tipo (Exam / Written / Requirement) → función → % o unidades para todos los inscritos; "Procesar" guarda solo lo nuevo o cambiado. **Midpoints y SAP**: cola de los que cruzaron un midpoint, con su SAP a esa fecha; se seleccionan, se calcula el SAP en lote y quedan revisados (con "Volver a mostrar"). **Colocación**: graduados por rango de fecha con State Board y empleo, % aprobados y % colocados, exportable. Los instructores ven solo a sus estudiantes y no ven colocación. |
+| **Centro de alertas** | En el Dashboard, según el rol: salidas sin marcar, ausencias, asistencia baja, midpoints por revisar, SAP Critical sin probation, por graduar, LOA que terminan, pagos vencidos, asientos por verificar y licencia por vencer. Cada aviso lleva a donde se resuelve. |
 | **Reportes** | Roster, asistencia por rango de fechas, morosidad, graduados y colocación, admisiones por fuente, ingresos y etiquetas. Todos se exportan a CSV o se imprimen. |
 | **Configuración** | Escuela (con licencia estatal y aviso de vencimiento) · **Catálogos** (etnia, dependencia, empresas, cuentas… se desactivan, no se borran) · Programas (agregar, editar o copiar) con pestañas Información, Costos (cargar al inscribir / institucional), Escala de notas, Académico (Exam / Written / Requirement) y SAP y midpoints · Horarios · Feriados y ajustes (todo el día o unas horas, para todos o un programa) · Usuarios y permisos · Plantillas de email · Automatizaciones (incluye cierre de sesión por inactividad) · Fuentes de leads · Importación CSV y respaldo. |
 
@@ -77,11 +78,11 @@ Mientras los valores de SAP no estén confirmados, el programa muestra la etique
 | Maintenance › Student (Add / Edit) | Estudiantes › Nuevo estudiante / ficha |
 | Maintenance › User Security | Configuración › Usuarios y roles |
 | Maintenance › Holidays / Adjustments | Configuración › Feriados |
-| Maintenance › Check Midpoints · Chk MidPnt | Ficha › Asistencia (midpoints) y Asistencia › Alertas |
+| Maintenance › Check Midpoints · Chk MidPnt | Académico › Midpoints y SAP |
 | Maintenance › Labels · Labels | Reportes › Etiquetas |
 | Maintenance › Reports · R-Reports | Reportes |
 | Tasks › Ledger | Ficha › Ledger y pagos, Cobros |
-| Tasks › Academics | Ficha › Académico |
+| Tasks › Academics | Académico › Notas en lote, Ficha › Académico |
 | Tasks › Attendance · Attendance | Asistencia › Hoja diaria, Ficha › Asistencia |
 | Tasks › Student Leads | Admisiones (CRM) |
 | Options › Check Consecutive Absences | Asistencia › Alertas (umbral configurable) |
@@ -137,12 +138,23 @@ Mientras los valores de SAP no estén confirmados, el programa muestra la etique
 | Horas excusadas (SAP › "treat excused hours as actual") | Tipo de asistencia "Excusado" + política del programa |
 | Scheduled vs. actual hours | Ficha › Asistencia: programadas, asistidas y % |
 
+**Fase 5 (hecha):**
+
+| Genesis (manual) | Aquí |
+|---|---|
+| Tasks › Academic (notas de una función para todo un programa) | Académico › Notas en lote (0 = completado sin nota) |
+| Pestaña SAP · Calculate SAP | Ficha › SAP: a cualquier fecha, detalle Exam / Written / Requirement, historial y propuesta de probation |
+| Check Midpoints (SAP en lote, imprimir, volver a mostrar) | Académico › Midpoints y SAP |
+| Probation por SAP | Se propone cuando el SAP es Critical; una persona la confirma o la levanta |
+| Placement (rango por fecha de graduación) | Académico › Colocación |
+
+Reglas del SAP en la demo (ver especificación §5.3): académico = Exam y Written promediados (un 0 no cuenta) más Requirement medido contra lo esperado para las horas que lleva, con los pesos del programa; si falta una categoría su peso se reparte. Asistencia = asistidas / programadas. Nivel: debajo del mínimo Critical = **Critical**; entre Critical y OK = **Bajo OK**; luego **OK** y **Superior**. El general es el más bajo. Los midpoints alcanzados hace más de 3 semanas se marcan revisados al cargar la demo, para que la cola empiece con lo reciente.
+
 **Pendiente de construir (especificación v0.3):**
 
 | Genesis (manual) | Aquí (planeado) |
 |---|---|
-| Tasks › Academic · Ledger (desembolso de un cheque) | Notas y desembolso en lote (fases 5 y 6) |
-| Pestaña SAP · Check Midpoints con SAP en lote | Ficha › SAP · Centro de alertas |
+| Tasks › Ledger (desembolso de un cheque entre varios estudiantes) | Desembolso en lote (fase 6) |
 | 29 reportes del manual | Reportes |
 | Inventory · Services · POS | Inventario (fase 10, si se confirma) |
 | ITA Setup (reloj con badge, redondeo de swipes) | Kiosco opcional (fase 11) |
@@ -158,6 +170,8 @@ src/
   lib/types.ts      modelo de datos (= tablas de supabase/schema.sql)
   lib/store.tsx     capa de datos (localStorage en la demo) + permisos por rol
   lib/calc.ts       horas (programadas con feriados parciales), balance, ausencias consecutivas, midpoints, graduación proyectada
+  lib/sap.ts        SAP (académico y asistencia), cola de midpoints
+  lib/alerts.ts     Centro de alertas por rol
   lib/config.ts     catálogos, escala de notas, SAP y costos por defecto + migración de datos guardados
   lib/actions.ts    crear estudiante, registrar pago, recordatorios
   lib/seed.ts       datos ficticios

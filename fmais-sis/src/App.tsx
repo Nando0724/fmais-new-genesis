@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import { canAccess, useStore, type Area } from "./lib/store";
+import Academic from "./pages/Academic";
 import Attendance from "./pages/Attendance";
 import Billing from "./pages/Billing";
 import Crm from "./pages/Crm";
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="enrollments"element={<Guard area="enrollments"><Enrollments /></Guard>} />
           <Route path="students" element={<Guard area="students"><Students /></Guard>} />
           <Route path="students/:id" element={<Guard area="students"><StudentProfile /></Guard>} />
+          <Route path="academic" element={<Guard area="academic"><Academic /></Guard>} />
           <Route path="billing" element={<Guard area="billing"><Billing /></Guard>} />
           <Route path="attendance" element={<Guard area="attendance"><Attendance /></Guard>} />
           <Route path="reports" element={<Guard area="reports"><Reports /></Guard>} />

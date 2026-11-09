@@ -1,4 +1,4 @@
-import { BarChart3, CalendarCheck, ClipboardList, CreditCard, GraduationCap, LayoutDashboard, LogOut, Megaphone, Menu, Settings, Users } from "lucide-react";
+import { BarChart3, BookOpenCheck, CalendarCheck, ClipboardList, CreditCard, GraduationCap, LayoutDashboard, LogOut, Megaphone, Menu, Settings, Users } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { canAccess, useStore, type Area } from "../lib/store";
@@ -11,6 +11,7 @@ const NAV: { to: string; label: string; area: Area; icon: ReactNode }[] = [
   { to: "/marketing", label: "Marketing", area: "marketing", icon: <Megaphone size={18} /> },
   { to: "/enrollments",label: "Inscripciones", area: "enrollments", icon: <ClipboardList size={18} /> },
   { to: "/students", label: "Estudiantes", area: "students", icon: <GraduationCap size={18} /> },
+  { to: "/academic", label: "Académico", area: "academic", icon: <BookOpenCheck size={18} /> },
   { to: "/billing", label: "Cobros", area: "billing", icon: <CreditCard size={18} /> },
   { to: "/attendance", label: "Asistencia", area: "attendance", icon: <CalendarCheck size={18} /> },
   { to: "/reports", label: "Reportes", area: "reports", icon: <BarChart3 size={18} /> },

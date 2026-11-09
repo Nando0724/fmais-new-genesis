@@ -1,6 +1,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { attendancePct, currentSchedule, midpointsReached, programOf, scheduledHours, studentAttendance, trackedHoursUntil } from "../../lib/calc";
+import { levelFor, SAP_LABEL, SAP_TONE } from "../../lib/sap";
 import { useStore } from "../../lib/store";
 import type { AttendanceRecord, AttendanceType, Student } from "../../lib/types";
 import { fmtDate, fmtTime, hoursBetween, today, uid } from "../../lib/utils";
@@ -20,7 +21,7 @@ export default function AttendanceTab({ s }: { s: Student }) {
   const sched = scheduledHours(s, db);
   const done = trackedHoursUntil(s, db);
   const pct = attendancePct(s, db);
-  const tone = pct == null || !program ? "slate" : pct < program.sap.attendance.critical ? "red" : pct < program.sap.attendance.ok ? "amber" : "green";
+  const level = program ? levelFor(pct, program.sap.attendance) : undefined;
 
   const startAdd = () =>
     setAdding({ id: uid(), studentId: s.id, date: today(), type: "Regular", timeIn: sch?.start ?? "09:00", timeOut: sch?.end ?? "13:00", breakMinutes: sch?.breakMinutes ?? 0, hours: 0, source: "manual" });
@@ -33,7 +34,7 @@ export default function AttendanceTab({ s }: { s: Student }) {
       <div className="grid gap-3 sm:grid-cols-3 lg:col-span-2">
         <Card><div className="p-4"><div className="text-xs text-slate-500">Horas programadas (hasta ayer)</div><div className="mt-1 text-2xl font-semibold tabular-nums">{sched}</div><div className="text-xs text-slate-400">Desde {fmtDate(s.trackingStartDate && s.trackingStartDate > s.firstClass ? s.trackingStartDate : s.firstClass)}, sin feriados ni LOA</div></div></Card>
         <Card><div className="p-4"><div className="text-xs text-slate-500">Horas asistidas (mismo periodo)</div><div className="mt-1 text-2xl font-semibold tabular-nums">{done}</div><div className="text-xs text-slate-400">{s.importedHours ? `+ ${s.importedHours} importadas` : ""}{s.transferHours ? ` + ${s.transferHours} transferidas` : ""}</div></div></Card>
-        <Card><div className="p-4"><div className="text-xs text-slate-500">Asistencia</div><div className="mt-1 flex items-center gap-2 text-2xl font-semibold tabular-nums">{pct == null ? "—" : `${pct}%`} {pct != null && <Badge tone={tone}>{tone === "red" ? "Critical" : tone === "amber" ? "Bajo OK" : "OK"}</Badge>}</div><div className="text-xs text-slate-400">Mínimo OK del programa: {program?.sap.attendance.ok ?? "—"}%{program && !program.sap.verified ? " (ejemplo)" : ""}</div></div></Card>
+        <Card><div className="p-4"><div className="text-xs text-slate-500">Asistencia</div><div className="mt-1 flex items-center gap-2 text-2xl font-semibold tabular-nums">{pct == null ? "—" : `${pct}%`} {level && <Badge tone={SAP_TONE[level]}>{SAP_LABEL[level]}</Badge>}</div><div className="text-xs text-slate-400">Mínimo OK del programa: {program?.sap.attendance.ok ?? "—"}%{program && !program.sap.verified ? " (ejemplo)" : ""}</div></div></Card>
       </div>
       <Card title={`Registros de asistencia (${recs.length})`} actions={<Button size="sm" onClick={startAdd}><Plus size={13} /> Agregar</Button>}>
         <Table>

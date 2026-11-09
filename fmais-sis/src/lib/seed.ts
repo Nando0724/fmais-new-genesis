@@ -1,4 +1,5 @@
 // Datos de demostración 100% ficticios. Se regeneran relativos a la fecha de hoy.
+import { reviewOldMidpoints } from "./sap";
 import { costsFrom, DEFAULT_GRADE_SCALE, defaultSap, ensurePhase1, programTotal, seedSelections } from "./config";
 import { ensureMarketing } from "./seedMarketing";
 import type {
@@ -348,7 +349,7 @@ export function buildSeed(): DB {
     if (last) Object.assign(last, { timeOut: undefined, hours: 0 });
   });
 
-  return ensurePhase1(ensureMarketing({
+  return reviewOldMidpoints(ensurePhase1(ensureMarketing({
     version: 1,
     settings: {
       schoolName: "Florida Medical & Aesthetic International School",
@@ -405,6 +406,8 @@ export function buildSeed(): DB {
     students,
     attendance,
     grades,
+    sapEvaluations: [],
+    midpointReviews: [],
     ledger,
     plans,
     emails,
@@ -415,5 +418,5 @@ export function buildSeed(): DB {
     marketingTemplates: [],
     campaigns: [],
     marketingEvents: [],
-  }));
+  })));
 }
