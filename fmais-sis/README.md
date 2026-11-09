@@ -59,7 +59,8 @@ Mientras los valores de SAP no estén confirmados, el programa muestra la etique
 | **Formulario web** (`/#/form`) | Formulario público bilingüe para captar leads, con casilla de consentimiento de marketing (sin marcar). Acepta `?utm_campaign=`. |
 | **Marketing** | Campañas por Constant Contact (simulado). El agente de IA (simulado) prepara el borrador a partir de un segmento y un template, escribe un párrafo personalizado para cada contacto y deja notas: exclusiones, hora sugerida y advertencias. Una persona revisa la vista previa con contactos reales en su idioma y aprueba, programa, envía o rechaza. Hay campañas recurrentes (bienvenida). Los resultados (aperturas, clics, bajas) vuelven al historial del lead, y un clic crea una tarea de llamada para el asesor. Pestañas: Segmentos, Templates, Contactos y consentimiento, Constant Contact. Lo pueden usar los roles Dueño, Administrador y Admisiones. |
 | **Inscripciones** | Solicitudes de inscripción en línea con sus 7 pasos, estado y depósito. Permite enviar un recordatorio para continuar y crear el estudiante cuando la solicitud está completa. |
-| **Estudiantes** | Lista con búsqueda y filtros (programa, horario, estado, balance pendiente, por graduar, ausencias) y exportación a CSV. |
+| **Estudiantes** | Lista con búsqueda (nombre en cualquier orden, badge, email, celular) y filtros por estado, registro, programa, horario, instructor, balance pendiente, por graduar y ausencias. Exportación a CSV. Los instructores no ven balances. |
+| **Nuevo estudiante** | Trae los datos de un lead del CRM, marca en amarillo los campos obligatorios, avisa si ya existe alguien con el mismo email o celular y permite elegir si se cargan los costos del programa (auto-ledger). Para quien ya venía cursando en Genesis se ponen las horas hechas y la fecha desde la que se cuenta la asistencia, sin cargar día por día. |
 | **Ficha del estudiante** | Encabezado igual al de Genesis y pestañas: Resumen, Detalle, Inscripción, Académico, Asistencia, Ledger y pagos, Colocación, Documentos, Notas e Historial. |
 | **Cobros** | Planes de pago automáticos y por Zelle, con estado (vencido, vence pronto, al día). Envía recordatorios de Zelle en lote, ejecuta los cobros automáticos del día (simulados), registra los Zelle recibidos y guarda el registro de emails. |
 | **Asistencia** | Hoja diaria manual por horario (marca todos presentes de una vez y ajusta entradas y salidas). Alertas de ausencias consecutivas, estudiantes por graduar, midpoints alcanzados y LOA. |
@@ -102,6 +103,15 @@ Mientras los valores de SAP no estén confirmados, el programa muestra la etique
 | Program › Info · Costs (Add / Inst) · Parameters (escala de notas) · Academics · SAP | Configuración › Programas (5 pestañas). Sin overtime: la escuela no lo cobra. |
 | Holidays / Adjustments parciales (por programa y horas) | Configuración › Feriados y ajustes |
 | Customize Auto Features | Configuración › Automatizaciones |
+
+**Fase 2 (hecha):**
+
+| Genesis (manual) | Aquí |
+|---|---|
+| Add Student: campos amarillos, botón Lead, Auto-ledger | Estudiantes › Nuevo estudiante |
+| Detail: datos FISAP (Auto Zero EFC, Exceptions) | Ficha › Detalle |
+| Enrollment: horas importadas + "Start Tracking Hours Using Genesis" | Ficha › Inscripción › Empezar a contar asistencia desde |
+| Student Search System | Estudiantes (búsqueda y filtros) |
 
 **Pendiente de construir (especificación v0.3):**
 

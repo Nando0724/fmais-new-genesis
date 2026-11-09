@@ -33,7 +33,33 @@ export interface NewStudentInput {
   depositMethod?: PaymentMethod;
   planMode?: PaymentPlan["mode"];
   installments?: number;
+  /** Cargar al ledger los costos del programa marcados "al inscribir" (Auto-ledger de Genesis). */
+  autoLedger?: boolean;
+  /** Estudiante que ya venía cursando (migración desde Genesis). */
+  importedHours?: number;
+  trackingStartDate?: string;
 }
+
+/** Campos obligatorios del alta. Devuelve el mensaje del primero que falta. */
+export function newStudentMissing(f: NewStudentInput): string | undefined {
+  if (!f.firstName.trim()) return "Falta el nombre.";
+  if (!f.lastName.trim()) return "Falta el apellido.";
+  if (!f.email.trim() && !f.phone.trim()) return "Pon al menos un email o un celular.";
+  if (f.email && !/^\S+@\S+\.\S+$/.test(f.email)) return "El email no es válido.";
+  if (!f.programId) return "Elige un programa.";
+  if (!f.scheduleId) return "Elige un horario.";
+  if (!f.firstClass) return "Falta la fecha de primera clase.";
+  if (f.trackingStartDate && f.trackingStartDate < f.firstClass) return "La fecha de inicio de conteo no puede ser antes de la primera clase.";
+  return undefined;
+}
+
+/** Estudiantes que ya existen con el mismo email o celular (para no duplicar). */
+export const possibleDuplicates = (db: Store["db"], email: string, phone: string) => {
+  const digits = (x: string) => x.replace(/\D/g, "");
+  const e = email.trim().toLowerCase();
+  const p = digits(phone);
+  return db.students.filter((s) => (e && s.email.toLowerCase() === e) || (p.length >= 7 && digits(s.cell) === p));
+};
 
 /** Crea el estudiante con sus cargos del programa, depósito y plan de pago. */
 export function createStudent(store: Store, input: NewStudentInput): Student {
@@ -63,7 +89,9 @@ export function createStudent(store: Store, input: NewStudentInput): Student {
     matriculationDate: T,
     schedules: [{ scheduleId: input.scheduleId, from: firstClass }],
     transferHours: 0,
-    importedHours: 0,
+    importedHours: input.importedHours ?? 0,
+    trackingStartDate: input.trackingStartDate || firstClass,
+    autoLedger: input.autoLedger !== false,
     overtimeHours: 0,
     loas: [],
     placement: { passedBoard: "" },
@@ -76,7 +104,7 @@ export function createStudent(store: Store, input: NewStudentInput): Student {
   if (fromLead) Object.assign(student, { marketingOptIn: fromLead.marketingOptIn, optInAt: fromLead.optInAt, optInSource: fromLead.optInSource, unsubscribedAt: fromLead.unsubscribedAt });
   const by = user?.id ?? "system";
   // Auto-ledger: se cargan los costos del programa marcados "Cargar al inscribir".
-  const entries: LedgerEntry[] = program.costs
+  const entries: LedgerEntry[] = (input.autoLedger === false ? [] : program.costs)
     .filter((c) => c.autoPost && c.amount)
     .map((c) => ({ id: uid(), studentId: student.id, date: T, enteredBy: by, description: c.description, charge: c.amount, payment: 0 }));
   let receipt = Number(nextReceipt(db));
@@ -101,7 +129,10 @@ export function createStudent(store: Store, input: NewStudentInput): Student {
   }
   if (input.leadId) {
     const lead = db.leads.find((l) => l.id === input.leadId);
-    if (lead) store.save("leads", { ...lead, stage: "enrolled", studentId: student.id }, "convert");
+    if (lead) {
+      store.save("leads", { ...lead, stage: "enrolled", studentId: student.id }, "convert");
+      store.save("leadActivities", { id: uid(), leadId: lead.id, type: "stage", note: `Inscrito como estudiante · badge #${student.badge}`, at: nowISO(), userId: user?.id });
+    }
     const oe = db.onlineEnrollments.find((o) => o.id === (input.onlineEnrollmentId ?? lead?.enrollmentId));
     if (oe && !oe.studentId) store.save("onlineEnrollments", { ...oe, studentId: student.id });
   }

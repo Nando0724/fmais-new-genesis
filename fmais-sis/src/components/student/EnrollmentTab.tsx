@@ -11,6 +11,8 @@ export default function EnrollmentTab({ s }: { s: Student }) {
   const { db, user, save } = useStore();
   const { d, set, dirty, commit: saveDraft, reset } = useDraft(s);
   const ro = user?.role === "instructor" || user?.role === "admissions";
+  const trackingError = d.trackingStartDate && d.trackingStartDate < d.firstClass ? "La fecha de inicio de conteo no puede ser antes de la primera clase." : undefined;
+  const ignored = d.trackingStartDate ? db.attendance.filter((a) => a.studentId === s.id && a.date < d.trackingStartDate!).length : 0;
 
   // Al cerrar la inscripción se pausan los cobros automáticos para no cobrarle a quien ya no estudia.
   const commit = () => {
@@ -70,10 +72,18 @@ export default function EnrollmentTab({ s }: { s: Student }) {
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <Field label="Horas de transferencia / re-inscripción"><Input disabled={ro} type="number" value={d.transferHours} onChange={(e) => set("transferHours", Number(e.target.value))} /></Field>
-            <Field label="Horas importadas de sistema anterior"><Input disabled={ro} type="number" value={d.importedHours} onChange={(e) => set("importedHours", Number(e.target.value))} /></Field>
-            <Field label="Horas extra cobradas"><Input disabled={ro} type="number" value={d.overtimeHours} onChange={(e) => set("overtimeHours", Number(e.target.value))} /></Field>
+            <Field label="Horas de transferencia / re-inscripción" hint="Aceptadas de otra escuela o de una inscripción anterior."><Input disabled={ro} type="number" min={0} value={d.transferHours} onChange={(e) => set("transferHours", Number(e.target.value))} /></Field>
+            <Field label="Horas importadas del sistema anterior" hint="Hechas antes de la fecha de inicio de conteo."><Input disabled={ro} type="number" min={0} value={d.importedHours} onChange={(e) => set("importedHours", Number(e.target.value))} /></Field>
+            <Field label="Empezar a contar asistencia desde" hint="Ausencias y SAP se calculan desde aquí; lo anterior no cuenta.">
+              <Input disabled={ro} type="date" value={d.trackingStartDate ?? d.firstClass} onChange={(e) => set("trackingStartDate", e.target.value || undefined)} />
+            </Field>
           </div>
+          {trackingError && <p className="text-xs text-red-600">{trackingError}</p>}
+          {ignored > 0 && (
+            <p className="text-xs text-amber-700">
+              {ignored} registro(s) de asistencia son anteriores a la fecha de inicio de conteo y no se suman: esas horas deben estar en "horas importadas".
+            </p>
+          )}
         </section>
 
         <section className="space-y-3">
@@ -119,7 +129,7 @@ export default function EnrollmentTab({ s }: { s: Student }) {
           </div>
         </section>
       </div>
-      <SaveBar dirty={dirty} commit={commit} reset={reset} readOnly={ro} />
+      <SaveBar dirty={dirty && !trackingError} commit={commit} reset={reset} readOnly={ro} />
     </Card>
   );
 }

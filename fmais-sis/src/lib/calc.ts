@@ -15,8 +15,18 @@ export const weeklyHours = (sch?: Schedule) => (sch ? dailyHours(sch) * sch.days
 export const studentAttendance = (s: Student, db: DB) =>
   db.attendance.filter((a) => a.studentId === s.id).sort((a, b) => b.date.localeCompare(a.date));
 
+/**
+ * Asistencia que cuenta en este sistema: la que va desde la fecha de inicio de conteo.
+ * Lo anterior ya está sumado en las horas importadas, así que no se cuenta dos veces.
+ */
+export const countedAttendance = (s: Student, db: DB) =>
+  db.attendance.filter((a) => a.studentId === s.id && (!s.trackingStartDate || a.date >= s.trackingStartDate));
+
+/** Primer día desde el que se calculan ausencias. */
+export const trackingStart = (s: Student) => (s.trackingStartDate && s.trackingStartDate > s.firstClass ? s.trackingStartDate : s.firstClass);
+
 export const hoursAttended = (s: Student, db: DB) =>
-  Math.round((db.attendance.filter((a) => a.studentId === s.id).reduce((t, a) => t + (a.type === "Absent" ? 0 : a.hours), 0) + s.transferHours + s.importedHours) * 100) / 100;
+  Math.round((countedAttendance(s, db).reduce((t, a) => t + (a.type === "Absent" ? 0 : a.hours), 0) + s.transferHours + s.importedHours) * 100) / 100;
 
 export const lastAttended = (s: Student, db: DB) => studentAttendance(s, db).find((a) => a.type !== "Absent" && a.hours > 0)?.date;
 
@@ -68,9 +78,10 @@ export const consecutiveAbsences = (s: Student, db: DB, on = today()) => {
   const sch = currentSchedule(s, db);
   if (!sch) return 0;
   const attended = new Set(db.attendance.filter((a) => a.studentId === s.id && a.type !== "Absent" && a.hours > 0).map((a) => a.date));
+  const from = trackingStart(s);
   let count = 0;
   let d = addDays(on, -1);
-  for (let i = 0; i < 90 && d >= s.firstClass; i++, d = addDays(d, -1)) {
+  for (let i = 0; i < 90 && d >= from; i++, d = addDays(d, -1)) {
     if (inLOA(s, d) || !isScheduledDay(d, sch, db, s.programId)) continue;
     if (attended.has(d)) break;
     count++;
@@ -96,9 +107,10 @@ export const projectedGrad = (s: Student, db: DB) => {
 export const midpointsReached = (s: Student, db: DB) => {
   const p = programOf(s, db);
   if (!p) return [];
-  const recs = db.attendance.filter((a) => a.studentId === s.id && a.type !== "Absent").sort((a, b) => a.date.localeCompare(b.date));
+  const recs = countedAttendance(s, db).filter((a) => a.type !== "Absent").sort((a, b) => a.date.localeCompare(b.date));
   let cum = s.transferHours + s.importedHours;
-  const out: { units: number; date?: string }[] = p.midpoints.map((m) => ({ units: m, date: cum >= m ? s.firstClass : undefined }));
+  // Los midpoints ya superados con horas importadas se fechan en el inicio de conteo.
+  const out: { units: number; date?: string }[] = p.midpoints.map((m) => ({ units: m, date: cum >= m ? trackingStart(s) : undefined }));
   for (const r of recs) {
     cum += r.hours;
     out.forEach((m) => {

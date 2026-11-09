@@ -143,6 +143,9 @@ export default function ImportData() {
           transferHours: 0, importedHours: 0, overtimeHours: 0, loas: [], placement: { passedBoard: "" }, createdAt: nowISO(),
         };
         const status = STATUS_MAP[norm(get(r, "status") ?? "")] ?? base.status;
+        const imported = map.importedHours ? num(get(r, "importedHours")) : base.importedHours;
+        // Con horas importadas, la asistencia empieza a contarse hoy: lo anterior ya va en esas horas.
+        const trackingStartDate = imported > 0 ? base.trackingStartDate ?? (today() > first ? today() : first) : base.trackingStartDate;
         return {
           ...base,
           firstName: get(r, "firstName") ?? base.firstName, lastName: get(r, "lastName") ?? base.lastName,
@@ -151,7 +154,8 @@ export default function ImportData() {
           birthdate: toDate(get(r, "birthdate")) || base.birthdate, ssn: get(r, "ssn") || base.ssn, programId: p.id, status,
           record: status === "Enrolled" || status === "LOA" ? "Active" : "Inactive",
           enrollmentDate: toDate(get(r, "enrollmentDate")) || base.enrollmentDate, firstClass: first,
-          contractGrad: toDate(get(r, "contractGrad")) || base.contractGrad, importedHours: map.importedHours ? num(get(r, "importedHours")) : base.importedHours,
+          contractGrad: toDate(get(r, "contractGrad")) || base.contractGrad, importedHours: imported, trackingStartDate,
+          autoLedger: base.autoLedger ?? false, // los cargos llegan con el import del ledger
         };
       });
       saveMany("students", out, `import:students:${fileName}`);

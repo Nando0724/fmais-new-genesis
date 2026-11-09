@@ -235,9 +235,11 @@ export interface Student extends MarketingConsent {
   combination?: string;
   matriculationDate?: string;
   efc?: number;
+  autoZeroEfc?: boolean;
   adjGrossIncome?: number;
   dependents?: number;
   dependency?: string;
+  fisapExceptions?: string;
   // Enrollment
   programId: string;
   status: EnrollmentStatus;
@@ -248,8 +250,11 @@ export interface Student extends MarketingConsent {
   completionDate?: string;
   schedules: ScheduleAssignment[];
   transferHours: number;
-  importedHours: number;
-  overtimeHours: number;
+  importedHours: number; // horas hechas antes de trackingStartDate (sistema anterior)
+  /** Desde esta fecha se cuenta la asistencia en este sistema. Lo anterior va en importedHours. */
+  trackingStartDate?: string;
+  autoLedger?: boolean; // al crearlo se cargaron (o no) los costos del programa
+  overtimeHours: number; // no se usa: la escuela no cobra overtime
   loas: LeaveOfAbsence[];
   probation?: "" | "Academic" | "Attendance" | "Financial";
   probationDate?: string;

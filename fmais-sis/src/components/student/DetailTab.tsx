@@ -39,11 +39,18 @@ export default function DetailTab({ s }: { s: Student }) {
   const [reveal, setReveal] = useState(false);
   const ro = user?.role === "instructor";
   const sensitive = canSeeSensitive(user?.role);
-  const txt = (k: keyof Student, label: string, cls = "") => (
-    <Field label={label} className={cls}>
-      <Input disabled={ro} value={(d[k] as string) ?? ""} onChange={(e) => set(k, e.target.value as never)} />
-    </Field>
-  );
+  // Obligatorios (amarillo en Genesis): sin ellos no se puede guardar.
+  const REQUIRED: (keyof Student)[] = ["firstName", "lastName", "badge"];
+  const isEmpty = (k: keyof Student) => !String(d[k] ?? "").trim();
+  const missing = REQUIRED.some(isEmpty) || (!d.email.trim() && !d.cell.trim());
+  const txt = (k: keyof Student, label: string, cls = "") => {
+    const required = REQUIRED.includes(k);
+    return (
+      <Field label={required ? `${label} *` : label} className={cls}>
+        <Input disabled={ro} className={required && isEmpty(k) ? "!border-amber-300 !bg-amber-50" : undefined} value={(d[k] as string) ?? ""} onChange={(e) => set(k, e.target.value as never)} />
+      </Field>
+    );
+  };
 
   return (
     <Card>
@@ -126,6 +133,11 @@ export default function DetailTab({ s }: { s: Student }) {
               <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Ayuda financiera</h4>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="EFC"><Input type="number" value={d.efc ?? 0} onChange={(e) => set("efc", Number(e.target.value))} /></Field>
+                <Field label="Auto Zero EFC">
+                  <Select value={d.autoZeroEfc == null ? "" : d.autoZeroEfc ? "1" : "0"} onChange={(e) => set("autoZeroEfc", e.target.value === "" ? undefined : e.target.value === "1")}>
+                    <option value="">—</option><option value="1">Sí</option><option value="0">No</option>
+                  </Select>
+                </Field>
                 <Field label="Ingreso bruto ajustado"><Input type="number" value={d.adjGrossIncome ?? 0} onChange={(e) => set("adjGrossIncome", Number(e.target.value))} /></Field>
                 <Field label="Dependientes"><Input type="number" value={d.dependents ?? 0} onChange={(e) => set("dependents", Number(e.target.value))} /></Field>
                 <Field label="Dependencia">
@@ -134,12 +146,14 @@ export default function DetailTab({ s }: { s: Student }) {
                     {activeOptions(db, "dependency", d.dependency).map((o) => <option key={o.id} value={o.value}>{o.value}</option>)}
                   </Select>
                 </Field>
+                <Field label="Exceptions (SAR / ISIR)" className="col-span-2"><Input value={d.fisapExceptions ?? ""} onChange={(e) => set("fisapExceptions", e.target.value)} /></Field>
               </div>
             </>
           )}
         </section>
       </div>
-      <SaveBar dirty={dirty} commit={commit} reset={reset} readOnly={ro} />
+      {missing && !ro && <p className="px-4 pb-2 text-right text-xs text-amber-700">Completa los campos en amarillo (nombre, apellido, badge y email o celular) para guardar.</p>}
+      <SaveBar dirty={dirty && !missing} commit={commit} reset={reset} readOnly={ro} />
     </Card>
   );
 }

@@ -1,6 +1,6 @@
 # FMAIS — Sistema Administrativo Centralizado (reemplazo de Genesis-SMSS)
 
-**Fecha:** 2026-11-09 · **Estado:** v0.3 — especificación alineada con el manual oficial de Genesis-SMSS (`genesis-manual.pdf`, 115 págs.). Lo nuevo de v0.3 está marcado con 🆕. **La fase 1 (§11) ya está en la demo**; el resto de lo marcado 🆕 aún no. Preguntas abiertas en §12.
+**Fecha:** 2026-11-09 · **Estado:** v0.3 — especificación alineada con el manual oficial de Genesis-SMSS (`genesis-manual.pdf`, 115 págs.). Lo nuevo de v0.3 está marcado con 🆕. **Las fases 1 y 2 (§11) ya están en la demo**; el resto de lo marcado 🆕 aún no. Preguntas abiertas en §12.
 
 ## 1. Objetivo
 
@@ -306,7 +306,7 @@ El flujo completo ya se puede probar en **Marketing** (`src/pages/Marketing.tsx`
 | Fase | Contenido |
 |---|---|
 | 1 ✅ | Roles/permisos · escuela (licencia) · **catálogos (Selections)** · programas completos (info, costos, escala de notas, funciones académicas, SAP, midpoints) · horarios Mañana / Noche · feriados y ajustes parciales · auto-logout. **Hecha en la demo** (2026-11-09). |
-| 2 | Estudiantes: alta (desde lead / inscripción / manual), ficha Detail + Enrollment, lista y búsqueda |
+| 2 ✅ | Estudiantes: alta (desde lead / inscripción / manual) con campos obligatorios, aviso de duplicados, auto-ledger y alta de estudiantes que ya venían cursando (horas importadas + fecha de inicio de conteo); ficha Detail (Auto Zero EFC, Exceptions) + Enrollment; lista con búsqueda y filtros por instructor y registro. **Hecha en la demo** (2026-11-09). |
 | 3 | Ledger con las reglas de §5.1 (tipos, cuentas, institucional, anulación, reembolsos, auto-post, overtime, recibos, por verificar) + cobros existentes |
 | 4 | Asistencia individual y **en lote**, horas programadas/asistidas (§5.2), Check Attendance y hojas de firma, Centro de alertas (ausencias, salidas sin marcar, por graduar) |
 | 5 | Académico (Exam / Written / Requirement) individual y **en lote**, **SAP** y cola de **midpoints**, colocación |
