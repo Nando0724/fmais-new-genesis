@@ -38,7 +38,7 @@ Estos son los emails **transaccionales**: cobros, recibos, ausencias e inscripci
 
 ## Constant Contact (marketing)
 
-Diseño completo en ESPECIFICACION.md §7. Piezas técnicas:
+Diseño completo en ESPECIFICACION.md §9. Piezas técnicas:
 
 | Pieza | Qué hace |
 |---|---|

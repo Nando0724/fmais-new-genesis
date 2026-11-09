@@ -10,26 +10,81 @@ export interface User {
   active: boolean;
 }
 
+// ── Catálogos (Selections de Genesis) ─────────────────────────────
+// Listas editables que alimentan los menús desplegables. Nunca se borran, solo se desactivan.
+export const SELECTION_TYPES = ["ethnicity", "dependency", "company", "payment_method", "account", "lead_source", "vendor", "product_class", "distributor"] as const;
+export type SelectionType = (typeof SELECTION_TYPES)[number];
+
+export interface Selection {
+  id: string;
+  type: SelectionType;
+  value: string;
+  active: boolean;
+  sort: number;
+  // Solo para "company": se copian a la colocación al elegir la empresa.
+  extra?: { contact?: string; phone?: string; address1?: string; city?: string; state?: string; zip?: string };
+}
+
+// ── Programas ──────────────────────────────────────────────────────
+// exam = parcial / final (un intento) · written = quiz, tarea · practical = requisito con unidades.
 export type RequirementKind = "exam" | "written" | "practical";
 
 export interface Requirement {
   id: string;
   name: string;
   kind: RequirementKind;
-  unitsRequired: number; // solo para "practical"
+  unitsRequired: number; // solo para "practical"; exam y written valen 1
+  active?: boolean; // undefined = activo. Desactivar no afecta a los ya inscritos.
+}
+
+export interface ProgramCost {
+  id: string;
+  description: string;
+  amount: number;
+  account: string; // valor del catálogo "account"
+  autoPost: boolean; // "Add" de Genesis: se carga solo al ledger al inscribir
+  institutional: boolean; // "Inst" de Genesis: cuenta en el cálculo de reembolso
+}
+
+export interface GradeBand {
+  letter: string;
+  min: number;
+  max: number;
+}
+
+export interface SapLevels {
+  critical: number;
+  ok: number;
+  superior: number;
+}
+
+export interface SapPolicy {
+  academic: SapLevels; // % mínimo de nota ponderada
+  attendance: SapLevels; // % mínimo de horas asistidas / programadas
+  weightExam: number;
+  weightWritten: number; // requisitos = 100 - exam - written
+  excusedCountsAsAttended: boolean;
+  verified: boolean; // false = valores de ejemplo pendientes de confirmar con la escuela
 }
 
 export interface Program {
   id: string;
   code: string;
   name: string;
-  totalHours: number;
-  tuition: number;
-  registrationFee: number;
-  suppliesFee: number;
+  unitType: "clock" | "credit";
+  totalHours: number; // largo del programa (horas reloj o créditos)
+  exitAnalysisUnits?: number;
+  academicYearUnits?: number;
+  accreditor?: string;
+  accreditationFrom?: string;
+  accreditationTo?: string;
   active: boolean;
+  costs: ProgramCost[];
+  gradeScale: GradeBand[];
   requirements: Requirement[];
+  sap: SapPolicy;
   midpoints: number[]; // horas en las que se alcanza cada midpoint (hasta 10)
+  copiedFrom?: string;
 }
 
 export interface Schedule {
@@ -41,10 +96,14 @@ export interface Schedule {
   breakMinutes: number;
 }
 
+/** Feriado o ajuste (Holidays / Adjustments). Reduce horas programadas, nunca las asistidas. */
 export interface Holiday {
   id: string;
   date: string; // YYYY-MM-DD
   description: string;
+  programId?: string; // vacío = todos los programas
+  start?: string; // vacío = día completo
+  end?: string;
 }
 
 /** Consentimiento de marketing: compartido por leads y estudiantes. */
@@ -304,6 +363,15 @@ export interface Settings {
   leadResponseMinutes: number; // SLA de primer contacto
   enrollmentPortalUrl: string;
   templates: Record<string, { subject: string; body: string }>;
+  // Licencia estatal y datos corporativos (Maintenance › School)
+  licenseNumber?: string;
+  licenseApproved?: string;
+  licenseExpires?: string;
+  officers?: string;
+  // Customize Auto Features
+  autoLogoutMinutes: number; // 0 = desactivado
+  checkMidpointsOnLogin: boolean;
+  checkMissingOutOnLogin: boolean;
   // Constant Contact (simulado en la demo)
   ccConnected?: boolean;
   ccAccountName?: string;
@@ -397,6 +465,7 @@ export interface DB {
   version: number;
   settings: Settings;
   users: User[];
+  selections: Selection[];
   programs: Program[];
   schedules: Schedule[];
   holidays: Holiday[];

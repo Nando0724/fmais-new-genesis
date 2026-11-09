@@ -1,5 +1,5 @@
 import { BarChart3, CalendarCheck, ClipboardList, CreditCard, GraduationCap, LayoutDashboard, LogOut, Megaphone, Menu, Settings, Users } from "lucide-react";
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { canAccess, useStore, type Area } from "../lib/store";
 import { ROLE_LABEL } from "../lib/utils";
@@ -21,10 +21,28 @@ const ToastCtx = createContext<(m: string) => void>(() => {});
 export const useToast = () => useContext(ToastCtx);
 
 export default function Layout() {
-  const { user, logout } = useStore();
+  const { db, user, logout } = useStore();
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<string>();
   const clear = useCallback(() => setToast(undefined), []);
+
+  // Cierre de sesión por inactividad (Customize Auto Features › Auto Log Out).
+  const idleMinutes = db.settings.autoLogoutMinutes;
+  useEffect(() => {
+    if (!user || !idleMinutes) return;
+    let t: ReturnType<typeof setTimeout>;
+    const arm = () => {
+      clearTimeout(t);
+      t = setTimeout(logout, idleMinutes * 60_000);
+    };
+    const events = ["mousemove", "keydown", "click", "scroll", "touchstart"] as const;
+    events.forEach((e) => window.addEventListener(e, arm, { passive: true }));
+    arm();
+    return () => {
+      clearTimeout(t);
+      events.forEach((e) => window.removeEventListener(e, arm));
+    };
+  }, [user, idleMinutes, logout]);
   const nav = NAV.filter((n) => canAccess(user?.role, n.area));
 
   return (

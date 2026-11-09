@@ -4,16 +4,16 @@ El clon sirve para que el equipo pruebe los flujos y pida cambios **antes** de t
 
 | Paso | Qué | Detalle |
 |---|---|---|
-| 1 | Base de datos | Correr `supabase/schema.sql` en el Supabase del portal (o en uno nuevo para staging). |
+| 1 | Base de datos | Correr `supabase/schema.sql` en el Supabase del portal (o en uno nuevo para staging). **Antes:** actualizar el esquema al modelo v0.3 de ESPECIFICACION.md §4 (catálogos, costos, escala de notas, SAP, ajustes de calendario, ledger ampliado, desembolsos, midpoints, inventario). Los cálculos de §5 (horas, balance, SAP, overtime) van como vistas/funciones de Postgres. |
 | 2 | Capa de datos | Reemplazar `src/lib/store.tsx` por consultas a Supabase. Las páginas no cambian, porque solo usan `db`, `save`, `remove` y `saveMany`. |
 | 3 | Login | Supabase Auth con email y contraseña. La tabla `staff` define el rol de cada usuario y RLS aplica los permisos en el servidor. |
 | 4 | Datos sensibles | SSN, licencia y Alien # se guardan cifrados (`pgcrypto`). Solo se revelan con la función `student_ssn`, que deja registro en la auditoría. |
 | 5 | Cobros y emails | Conectar el procesador de pagos y el proveedor de email del portal (ver INTEGRACIONES.md). Programar el cron diario. |
 | 6 | Leads | Activar `lead-intake`, el formulario web y el webhook de Meta. |
 | 7 | Portal | Hacer que el portal lea `?ref=` y que marque los `online_enrollments` como completados. |
-| 8 | Migración Genesis | Exportar a CSV desde Genesis e importar en este orden: estudiantes → ledger → asistencia. Verificar que coincidan las horas, el balance y el estado de cada estudiante. Operar los dos sistemas en paralelo de 2 a 4 semanas. |
+| 8 | Migración Genesis | Exportar a CSV desde Genesis e importar en el orden de ESPECIFICACION.md §10 (catálogos → programas → estudiantes → ledger → asistencia → notas …). Verificar que coincidan horas asistidas y programadas, balance, SAP y estado de cada estudiante. Operar los dos sistemas en paralelo de 2 a 4 semanas. |
 | 9 | Integración al admin actual | Mover estas páginas dentro de `/admin` del proyecto Lovable (mismo stack: React + Tailwind + Supabase). |
-| 10 | Marketing | Agregar el consentimiento al formulario web y al portal. Conectar Constant Contact por OAuth, sincronizar contactos, crear la pantalla de campañas pendientes de aprobar y activar el agente de campañas (ver ESPECIFICACION.md §7 e INTEGRACIONES.md). Antes de importar contactos existentes, confirmar que tienen consentimiento registrado. |
+| 10 | Marketing | Agregar el consentimiento al formulario web y al portal. Conectar Constant Contact por OAuth, sincronizar contactos, crear la pantalla de campañas pendientes de aprobar y activar el agente de campañas (ver ESPECIFICACION.md §9 e INTEGRACIONES.md). Antes de importar contactos existentes, confirmar que tienen consentimiento registrado. |
 
 ## Migración desde Genesis
 

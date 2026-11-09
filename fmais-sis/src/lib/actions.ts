@@ -75,16 +75,15 @@ export function createStudent(store: Store, input: NewStudentInput): Student {
   const fromLead = db.leads.find((l) => l.id === input.leadId);
   if (fromLead) Object.assign(student, { marketingOptIn: fromLead.marketingOptIn, optInAt: fromLead.optInAt, optInSource: fromLead.optInSource, unsubscribedAt: fromLead.unsubscribedAt });
   const by = user?.id ?? "system";
-  const entries: LedgerEntry[] = [
-    { id: uid(), studentId: student.id, date: T, enteredBy: by, description: "School Registration Fee", charge: program.registrationFee, payment: 0 },
-    { id: uid(), studentId: student.id, date: T, enteredBy: by, description: "Supplies & Educational Resources", charge: program.suppliesFee, payment: 0 },
-    { id: uid(), studentId: student.id, date: T, enteredBy: by, description: "Tuition/Fees", charge: program.tuition, payment: 0 },
-  ];
+  // Auto-ledger: se cargan los costos del programa marcados "Cargar al inscribir".
+  const entries: LedgerEntry[] = program.costs
+    .filter((c) => c.autoPost && c.amount)
+    .map((c) => ({ id: uid(), studentId: student.id, date: T, enteredBy: by, description: c.description, charge: c.amount, payment: 0 }));
   let receipt = Number(nextReceipt(db));
   if (input.deposit) {
     entries.push({ id: uid(), studentId: student.id, date: T, enteredBy: by, description: "Depósito de inscripción", charge: 0, payment: input.deposit, receipt: String(receipt++), method: input.depositMethod ?? "Card" });
   }
-  const total = program.tuition + program.registrationFee + program.suppliesFee - (input.deposit ?? 0);
+  const total = entries.reduce((t, e) => t + e.charge, 0) - (input.deposit ?? 0);
   const installments = input.installments ?? 6;
   store.save("students", student, "create");
   store.saveMany("ledger", entries, "create:charges");

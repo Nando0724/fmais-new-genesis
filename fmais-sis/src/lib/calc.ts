@@ -37,8 +37,30 @@ export const balance = (studentId: string, db: DB) =>
 
 const inLOA = (s: Student, date: string) => s.loas.some((l) => l.start <= date && (!l.end || l.end >= date));
 
-export const isScheduledDay = (date: string, sch: Schedule | undefined, db: DB) =>
-  !!sch && sch.days.includes(parseDate(date).getDay()) && !db.holidays.some((h) => h.date === date);
+const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+
+/** Feriados/ajustes que aplican a un programa en una fecha (los sin programa aplican a todos). */
+export const adjustmentsOn = (date: string, db: DB, programId?: string) =>
+  db.holidays.filter((h) => h.date === date && (!h.programId || !programId || h.programId === programId));
+
+/**
+ * Horas programadas de un día según el horario, menos feriados y ajustes.
+ * Un ajuste sin horas cierra el día completo; con horas, descuenta solo el tramo que se cruza con la clase.
+ */
+export const scheduledHoursOn = (date: string, sch: Schedule | undefined, db: DB, programId?: string) => {
+  if (!sch || !sch.days.includes(parseDate(date).getDay())) return 0;
+  const adj = adjustmentsOn(date, db, programId);
+  if (adj.some((h) => !h.start || !h.end)) return 0;
+  const start = toMin(sch.start);
+  const end = toMin(sch.end);
+  const closed = adj.reduce((t, h) => t + Math.max(0, Math.min(end, toMin(h.end!)) - Math.max(start, toMin(h.start!))), 0);
+  const minutes = Math.max(0, end - start - closed - (closed ? 0 : sch.breakMinutes));
+  return Math.round((minutes / 60) * 100) / 100;
+};
+
+/** Día de clase: el horario lo incluye y no hay un feriado que lo cierre por completo. */
+export const isScheduledDay = (date: string, sch: Schedule | undefined, db: DB, programId?: string) =>
+  scheduledHoursOn(date, sch, db, programId) > 0;
 
 /** Días de clase programados consecutivos sin asistencia, contando hacia atrás desde hoy. */
 export const consecutiveAbsences = (s: Student, db: DB, on = today()) => {
@@ -49,7 +71,7 @@ export const consecutiveAbsences = (s: Student, db: DB, on = today()) => {
   let count = 0;
   let d = addDays(on, -1);
   for (let i = 0; i < 90 && d >= s.firstClass; i++, d = addDays(d, -1)) {
-    if (inLOA(s, d) || !isScheduledDay(d, sch, db)) continue;
+    if (inLOA(s, d) || !isScheduledDay(d, sch, db, s.programId)) continue;
     if (attended.has(d)) break;
     count++;
   }
@@ -61,12 +83,11 @@ export const projectedGrad = (s: Student, db: DB) => {
   if (s.status === "Graduated") return s.completionDate;
   const sch = currentSchedule(s, db);
   let remaining = remainingHours(s, db);
-  const perDay = dailyHours(sch);
-  if (!sch || !perDay || s.status !== "Enrolled") return undefined;
+  if (!sch || !dailyHours(sch) || s.status !== "Enrolled") return undefined;
   let d = today();
   for (let i = 0; i < 1500 && remaining > 0; i++) {
     d = addDays(d, 1);
-    if (isScheduledDay(d, sch, db)) remaining -= perDay;
+    remaining -= scheduledHoursOn(d, sch, db, s.programId);
   }
   return d;
 };

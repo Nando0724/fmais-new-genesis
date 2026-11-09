@@ -1,16 +1,18 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { programOf } from "../../lib/calc";
+import { letterFor } from "../../lib/config";
 import { useStore } from "../../lib/store";
 import type { Grade, Requirement, Student } from "../../lib/types";
 import { fmtDate, today, uid } from "../../lib/utils";
 import { Badge, Button, Card, Empty, Field, Input, Modal, Progress, Select, Table, Td, Th } from "../ui";
 
-export const letter = (p?: number) => (p == null ? "—" : p >= 90 ? "A" : p >= 80 ? "B" : p >= 70 ? "C" : p >= 60 ? "D" : "F");
+const KIND_LABEL = { exam: "Exam", written: "Written", practical: "Requirement" } as const;
 
 export default function AcademicTab({ s }: { s: Student }) {
   const { db, save, remove } = useStore();
   const program = programOf(s, db);
+  const letter = (p?: number) => letterFor(p, program);
   const grades = db.grades.filter((g) => g.studentId === s.id);
   const [edit, setEdit] = useState<Grade | null>(null);
   if (!program) return <Empty>El estudiante no tiene programa.</Empty>;
@@ -35,13 +37,14 @@ export default function AcademicTab({ s }: { s: Student }) {
 
       <Card title="Exámenes (Exam / Written)">
         <Table>
-          <thead><tr><Th>Nombre</Th><Th>Completado</Th><Th>Letra</Th><Th>%</Th><Th></Th></tr></thead>
+          <thead><tr><Th>Nombre</Th><Th>Tipo</Th><Th>Completado</Th><Th>Letra</Th><Th>%</Th><Th></Th></tr></thead>
           <tbody>
             {written.map((r) => {
               const g = gradeOf(r);
               return (
                 <tr key={r.id}>
                   <Td className="font-medium">{r.name}</Td>
+                  <Td><Badge tone={r.kind === "exam" ? "violet" : "blue"}>{KIND_LABEL[r.kind]}</Badge></Td>
                   <Td>{g ? fmtDate(g.date) : <Badge>Pendiente</Badge>}</Td>
                   <Td>{letter(g?.percent)}</Td>
                   <Td className="tabular-nums">{g?.percent ?? "—"}</Td>

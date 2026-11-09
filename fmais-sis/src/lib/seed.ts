@@ -1,4 +1,5 @@
 // Datos de demostración 100% ficticios. Se regeneran relativos a la fecha de hoy.
+import { costsFrom, DEFAULT_GRADE_SCALE, defaultSap, programTotal, seedSelections } from "./config";
 import { ensureMarketing } from "./seedMarketing";
 import type {
   AttendanceRecord, DB, EmailLog, Grade, Lead, LeadActivity, LeadSource, LeadStage, LedgerEntry,
@@ -38,20 +39,23 @@ export function buildSeed(): DB {
     { id: "u_ins2", name: "Yanelis Acosta", email: "yacosta@fmais.demo", role: "instructor", active: true },
   ];
 
+  // Parciales y finales son "exam" (un intento); el resto de evaluaciones, "written".
+  const isExam = (w: string) => /mid ?term|final/i.test(w);
   const prog = (code: string, name: string, totalHours: number, tuition: number, written: string[], practical: [string, number][]): Program => ({
     id: `p_${code.toLowerCase()}`,
     code,
     name,
+    unitType: "clock",
     totalHours,
-    tuition,
-    registrationFee: 150,
-    suppliesFee: 350,
     active: true,
+    costs: costsFrom(tuition, 150, 350, (p) => `${p}_${code}_${++n}`),
+    gradeScale: DEFAULT_GRADE_SCALE,
     requirements: [
-      ...written.map((w, i) => ({ id: `rq_${code}_w${i}`, name: w, kind: "written" as const, unitsRequired: 0 })),
+      ...written.map((w, i) => ({ id: `rq_${code}_w${i}`, name: w, kind: isExam(w) ? ("exam" as const) : ("written" as const), unitsRequired: 1 })),
       ...practical.map(([p, u], i) => ({ id: `rq_${code}_p${i}`, name: p, kind: "practical" as const, unitsRequired: u })),
     ],
-    midpoints: [0.25, 0.5, 0.75].map((f) => Math.round(totalHours * f)),
+    sap: defaultSap(),
+    midpoints: [0.25, 0.5, 0.75].map((f) => Math.round(totalHours * f)), // EJEMPLO: por verificar
   });
 
   const programs: Program[] = [
@@ -63,11 +67,10 @@ export function buildSeed(): DB {
     prog("PHL", "PHLEBOTOMY TECHNICIAN", 165, 1650, ["MID Term", "Final"], [["Venipunctures", 50], ["Capillary punctures", 10]]),
   ];
 
+  // Horarios confirmados por la escuela. Los días (lunes a jueves) están por verificar.
   const schedules: Schedule[] = [
-    { id: "s_ptd", name: "PART TIME DAY", days: [1, 2, 3, 4], start: "09:00", end: "13:00", breakMinutes: 0 },
-    { id: "s_ptn", name: "PART TIME NIGHT", days: [1, 2, 3, 4], start: "18:00", end: "22:00", breakMinutes: 0 },
-    { id: "s_ftd", name: "FULL TIME DAY", days: [1, 2, 3, 4, 5], start: "09:00", end: "15:30", breakMinutes: 30 },
-    { id: "s_wkd", name: "WEEKEND", days: [6], start: "09:00", end: "17:00", breakMinutes: 60 },
+    { id: "s_ptd", name: "MAÑANA", days: [1, 2, 3, 4], start: "09:00", end: "13:00", breakMinutes: 0 },
+    { id: "s_ptn", name: "NOCHE", days: [1, 2, 3, 4], start: "18:00", end: "22:00", breakMinutes: 0 },
   ];
 
   const year = parseDate(T).getFullYear();
@@ -192,26 +195,22 @@ export function buildSeed(): DB {
     // Notas
     const pct = cum / p.totalHours;
     p.requirements.forEach((rq, j) => {
-      const threshold = rq.kind === "written" ? (j + 1) / (p.requirements.filter((x) => x.kind === "written").length + 0.5) : 0.1;
+      const threshold = rq.kind !== "practical" ? (j + 1) / (p.requirements.filter((x) => x.kind !== "practical").length + 0.5) : 0.1;
       if (pct >= threshold) {
         grades.push({
           id: id("g"),
           studentId: sid,
           requirementId: rq.id,
           date: addDays(firstClass, Math.round(daysBack * Math.min(1, threshold))),
-          percent: rq.kind === "written" ? int(72, 99) : undefined,
+          percent: rq.kind !== "practical" ? int(72, 99) : undefined,
           unitsDone: rq.kind === "practical" ? Math.min(rq.unitsRequired, Math.round(rq.unitsRequired * pct)) : undefined,
         });
       }
     });
 
     // Ledger: cargos + depósito + pagos
-    const total = p.tuition + p.registrationFee + p.suppliesFee;
-    ledger.push(
-      { id: id("l"), studentId: sid, date: enrollmentDate, enteredBy: "u_fin", description: "School Registration Fee", charge: p.registrationFee, payment: 0 },
-      { id: id("l"), studentId: sid, date: enrollmentDate, enteredBy: "u_fin", description: "Supplies & Educational Resources", charge: p.suppliesFee, payment: 0 },
-      { id: id("l"), studentId: sid, date: enrollmentDate, enteredBy: "u_fin", description: "Tuition/Fees", charge: p.tuition, payment: 0 },
-    );
+    const total = programTotal(p);
+    ledger.push(...p.costs.filter((c) => c.autoPost).map((c) => ({ id: id("l"), studentId: sid, date: enrollmentDate, enteredBy: "u_fin", description: c.description, charge: c.amount, payment: 0 })));
     const method = pick(methods);
     const deposit = Math.min(1500, total);
     ledger.push({ id: id("l"), studentId: sid, date: enrollmentDate, enteredBy: "u_fin", description: "Depósito de inscripción", charge: 0, payment: deposit, receipt: String(receipt++), method });
@@ -346,6 +345,12 @@ export function buildSeed(): DB {
       reminderDaysBefore: 3,
       leadResponseMinutes: 15,
       enrollmentPortalUrl: "https://thefmais-enrollment.lovable.app/",
+      licenseNumber: "CIE-0000 (ejemplo)",
+      licenseApproved: addDays(T, -700),
+      licenseExpires: addDays(T, 395),
+      autoLogoutMinutes: 30,
+      checkMidpointsOnLogin: true,
+      checkMissingOutOnLogin: true,
       templates: {
         zelle_reminder: {
           subject: "Recordatorio de pago FMAIS – vence {{fecha}}",
@@ -374,6 +379,7 @@ export function buildSeed(): DB {
       },
     },
     users,
+    selections: seedSelections(),
     programs,
     schedules,
     holidays,

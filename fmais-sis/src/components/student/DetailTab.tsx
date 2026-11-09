@@ -1,5 +1,6 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
+import { activeOptions } from "../../lib/config";
 import { canSeeSensitive, useStore } from "../../lib/store";
 import type { Student } from "../../lib/types";
 import { maskSSN } from "../../lib/utils";
@@ -33,7 +34,7 @@ export function SaveBar({ dirty, commit, reset, readOnly }: { dirty: boolean; co
 }
 
 export default function DetailTab({ s }: { s: Student }) {
-  const { user } = useStore();
+  const { db, user } = useStore();
   const { d, set, setD, dirty, commit, reset } = useDraft(s);
   const [reveal, setReveal] = useState(false);
   const ro = user?.role === "instructor";
@@ -86,7 +87,8 @@ export default function DetailTab({ s }: { s: Student }) {
             </Field>
             <Field label="Etnia" className="col-span-2">
               <Select disabled={ro} value={d.ethnicity ?? ""} onChange={(e) => set("ethnicity", e.target.value)}>
-                {["", "Hispanic", "White", "Black or African American", "Asian", "American Indian", "Pacific Islander", "Two or more", "Not reported"].map((m) => <option key={m} value={m}>{m || "—"}</option>)}
+                <option value="">—</option>
+                {activeOptions(db, "ethnicity", d.ethnicity).map((o) => <option key={o.id} value={o.value}>{o.value}</option>)}
               </Select>
             </Field>
             {sensitive && txt("driverLicense", "Licencia de conducir", "col-span-3")}
@@ -128,7 +130,8 @@ export default function DetailTab({ s }: { s: Student }) {
                 <Field label="Dependientes"><Input type="number" value={d.dependents ?? 0} onChange={(e) => set("dependents", Number(e.target.value))} /></Field>
                 <Field label="Dependencia">
                   <Select value={d.dependency ?? ""} onChange={(e) => set("dependency", e.target.value)}>
-                    <option value="">—</option><option>Dependent</option><option>Independent</option>
+                    <option value="">—</option>
+                    {activeOptions(db, "dependency", d.dependency).map((o) => <option key={o.id} value={o.value}>{o.value}</option>)}
                   </Select>
                 </Field>
               </div>

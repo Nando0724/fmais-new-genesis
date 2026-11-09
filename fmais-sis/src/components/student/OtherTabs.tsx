@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { sendTemplate } from "../../lib/actions";
 import { balance, consecutiveAbsences, hoursAttended, isAboutToGrad, midpointsReached, planStatus, programOf, progressPct, remainingHours, studentAttendance } from "../../lib/calc";
+import { activeOptions } from "../../lib/config";
 import { useStore, userName } from "../../lib/store";
 import type { Student } from "../../lib/types";
 import { fmtDate, fmtDateTime, money, nowISO, uid } from "../../lib/utils";
@@ -80,7 +81,7 @@ export function SummaryTab({ s }: { s: Student }) {
 }
 
 export function PlacementTab({ s }: { s: Student }) {
-  const { user } = useStore();
+  const { db, user } = useStore();
   const { d, setD, dirty, commit, reset } = useDraft(s);
   const ro = user?.role === "instructor";
   const p = d.placement;
@@ -106,7 +107,19 @@ export function PlacementTab({ s }: { s: Student }) {
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Empleo</h4>
           <div className="grid grid-cols-6 gap-3">
             <Field label="Fecha de contratación" className="col-span-2"><Input disabled={ro} type="date" value={p.hireDate ?? ""} onChange={(e) => set("hireDate", e.target.value)} /></Field>
-            {txt("company", "Empresa", "col-span-4")}
+            <Field label="Empresa" hint="Al elegirla se llenan contacto y dirección del catálogo; se pueden editar." className="col-span-4">
+              <Select
+                disabled={ro}
+                value={p.company ?? ""}
+                onChange={(e) => {
+                  const c = db.selections.find((x) => x.type === "company" && x.value === e.target.value);
+                  setD({ ...d, placement: { ...p, company: e.target.value, ...(c?.extra ?? {}) } });
+                }}
+              >
+                <option value="">—</option>
+                {activeOptions(db, "company", p.company).map((o) => <option key={o.id} value={o.value}>{o.value}</option>)}
+              </Select>
+            </Field>
             {txt("contact", "Contacto", "col-span-3")}
             {txt("phone", "Teléfono", "col-span-3")}
             {txt("address1", "Dirección 1", "col-span-6")}

@@ -36,7 +36,7 @@ export default function NewStudentModal({ open, onClose, initial, onCreated }: {
 
   const set = <K extends keyof NewStudentInput>(k: K, v: NewStudentInput[K]) => setF((x) => ({ ...x, [k]: v }));
   const program = db.programs.find((p) => p.id === f.programId);
-  const total = program ? program.tuition + program.registrationFee + program.suppliesFee : 0;
+  const total = program ? program.costs.filter((c) => c.autoPost).reduce((t, c) => t + c.amount, 0) : 0;
   const rest = Math.max(0, total - (f.deposit ?? 0));
   const valid = f.firstName && f.lastName && f.programId && f.scheduleId;
 

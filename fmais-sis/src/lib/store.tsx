@@ -1,6 +1,7 @@
 // Capa de datos. En la demo vive en localStorage; para producción se reemplaza
 // este archivo por llamadas a Supabase (mismas colecciones, ver supabase/schema.sql).
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ensurePhase1 } from "./config";
 import { buildSeed } from "./seed";
 import { ensureMarketing } from "./seedMarketing";
 import type { Collection, DB, EmailLog, Role, Settings, User } from "./types";
@@ -45,7 +46,7 @@ function load(): DB {
   try {
     const raw = localStorage.getItem(DB_KEY);
     // ensureMarketing completa datos guardados antes de que existiera el módulo de marketing.
-    if (raw) return ensureMarketing(JSON.parse(raw));
+    if (raw) return ensurePhase1(ensureMarketing(JSON.parse(raw)));
   } catch {
     /* almacenamiento no disponible */
   }

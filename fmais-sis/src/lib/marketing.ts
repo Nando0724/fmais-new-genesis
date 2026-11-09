@@ -1,6 +1,7 @@
 // Motor de marketing de la demo: segmentos, agente de campañas y envío por Constant Contact.
 // Todo es simulado. En producción el texto lo escribe un modelo de IA (Claude) y el envío
 // lo hace la API v3 de Constant Contact (ver docs/INTEGRACIONES.md).
+import { programTotal } from "./config";
 import type { Audience, Bilingual, Campaign, DB, Lead, LeadActivity, MarketingEvent, Segment, Student } from "./types";
 import { addDays, fillTemplate, money, parseDate, toISODate, today, uid } from "./utils";
 
@@ -84,7 +85,7 @@ const fmtLong = (iso: string, lang: "es" | "en") =>
 export function aiParagraph(db: DB, c: Contact): string {
   const es = c.language === "es";
   const p = db.programs.find((x) => x.id === c.programId);
-  const total = p ? p.tuition + p.registrationFee + p.suppliesFee : 0;
+  const total = programTotal(p);
   const monthly = total ? money(Math.round((total - 1500) / 6)) : "";
   const advisor = db.users.find((u) => u.id === c.ownerId)?.name.split(" ")[0];
   const cohort = fmtLong(nextCohort(), c.language);

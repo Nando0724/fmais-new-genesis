@@ -28,7 +28,26 @@ Al entrar eliges un usuario de demostración. Cada rol ve solo sus módulos:
 | Daniel Torres | Finanzas | Dashboard, Inscripciones, Estudiantes, Cobros, Reportes |
 | Mariela Soto / Yanelis Acosta | Instructor | Solo sus estudiantes y su asistencia (sin pagos) |
 
-Para volver al estado inicial usa **Configuración › Datos e importación › Reiniciar demo**.
+Para volver al estado inicial usa **Configuración › Datos e importación › Reiniciar demo**. (Si ya habías abierto la demo antes de la fase 1, reiníciala para ver los horarios Mañana / Noche.)
+
+## ⚠️ Pendiente de verificar con la escuela
+
+Estos valores de la demo son **de ejemplo**. Hay que confirmarlos antes de usar el sistema de verdad:
+
+| Qué | Valor de ejemplo en la demo | Dónde se cambia |
+|---|---|---|
+| Mínimos de SAP por programa (Critical / OK / Superior) | Académico 70 / 75 / 90 · Asistencia 67 / 75 / 95 | Configuración › Programas › SAP y midpoints |
+| Pesos de las notas | Exam 40% · Written 30% · Requirement 30% | ídem |
+| ¿Las horas excusadas cuentan como asistidas? | No | ídem |
+| Midpoints de cada programa | 25%, 50% y 75% de las horas | ídem |
+| Días de clase de los horarios | Lunes a jueves (Mañana 9:00–13:00, Noche 18:00–22:00) | Configuración › Horarios |
+| Horas reloj o créditos | Horas reloj | Configuración › Programas › Información |
+| Costos de cada programa y su cuenta | Registration $150, Supplies $350, Tuition según programa | Configuración › Programas › Costos |
+| Número y fechas de la licencia estatal | "CIE-0000 (ejemplo)" | Configuración › Escuela |
+
+Mientras los valores de SAP no estén confirmados, el programa muestra la etiqueta **"Ejemplo"**. Cuando la escuela los confirme, se marca la casilla de confirmación en la pestaña SAP del programa.
+
+**Confirmado por la escuela:** escala de notas A = 90–100, B = 80–89, C = 70–79, D = 60–69, F = menos de 60 · no se cobran horas extra (overtime) · dos horarios: Mañana 9:00 AM–1:00 PM y Noche 6:00 PM–10:00 PM.
 
 ## Módulos
 
@@ -45,7 +64,7 @@ Para volver al estado inicial usa **Configuración › Datos e importación › 
 | **Cobros** | Planes de pago automáticos y por Zelle, con estado (vencido, vence pronto, al día). Envía recordatorios de Zelle en lote, ejecuta los cobros automáticos del día (simulados), registra los Zelle recibidos y guarda el registro de emails. |
 | **Asistencia** | Hoja diaria manual por horario (marca todos presentes de una vez y ajusta entradas y salidas). Alertas de ausencias consecutivas, estudiantes por graduar, midpoints alcanzados y LOA. |
 | **Reportes** | Roster, asistencia por rango de fechas, morosidad, graduados y colocación, admisiones por fuente, ingresos y etiquetas. Todos se exportan a CSV o se imprimen. |
-| **Configuración** | Escuela, programas (agregar, editar o copiar, con exámenes, requisitos y midpoints), horarios, feriados, usuarios y permisos, plantillas de email, umbrales de las automatizaciones, fuentes de leads, importación desde CSV y respaldo. |
+| **Configuración** | Escuela (con licencia estatal y aviso de vencimiento) · **Catálogos** (etnia, dependencia, empresas, cuentas… se desactivan, no se borran) · Programas (agregar, editar o copiar) con pestañas Información, Costos (cargar al inscribir / institucional), Escala de notas, Académico (Exam / Written / Requirement) y SAP y midpoints · Horarios · Feriados y ajustes (todo el día o unas horas, para todos o un programa) · Usuarios y permisos · Plantillas de email · Automatizaciones (incluye cierre de sesión por inactividad) · Fuentes de leads · Importación CSV y respaldo. |
 
 ## Equivalencias con Genesis
 
@@ -74,10 +93,31 @@ Para volver al estado inicial usa **Configuración › Datos e importación › 
 | Pestaña Enrollment (estado, horarios 1-3, LOA, probation, horas) | Ficha › Inscripción (horarios y LOA sin límite) |
 | Comments | Ficha › Notas |
 
-**No replicado por ahora:**
-- **ITA Setup / Chk Swipes** (lector de badge): ustedes toman la asistencia a mano.
-- **POS / Inventory** y **FAS / Credit Hour Module**: pendientes de confirmar si se usan.
-- **Window / Help**: son menús propios de una app de escritorio.
+**Fase 1 (hecha), a partir del manual oficial de Genesis:**
+
+| Genesis (manual) | Aquí |
+|---|---|
+| Maintenance › School (licencia, oficiales) | Configuración › Escuela |
+| Maintenance › Selections | Configuración › Catálogos. "Staff" = Usuarios; "Student Status" queda fijo porque el sistema calcula con él; "Attendance levels" = Horarios (Mañana / Noche). |
+| Program › Info · Costs (Add / Inst) · Parameters (escala de notas) · Academics · SAP | Configuración › Programas (5 pestañas). Sin overtime: la escuela no lo cobra. |
+| Holidays / Adjustments parciales (por programa y horas) | Configuración › Feriados y ajustes |
+| Customize Auto Features | Configuración › Automatizaciones |
+
+**Pendiente de construir (especificación v0.3):**
+
+| Genesis (manual) | Aquí (planeado) |
+|---|---|
+| Tasks › Academic · Attendance · Ledger (desembolso de un cheque) | Menú **Tareas** (en lote) |
+| Ledger: tipos, cuenta, institucional, anular, reembolso negativo, por verificar | Ficha › Ledger |
+| Pestaña SAP · Check Midpoints con SAP en lote | Ficha › SAP · Centro de alertas |
+| ITA Check Attendance y hojas de firma | Asistencia |
+| 29 reportes del manual | Reportes |
+| Inventory · Services · POS | Inventario (fase 10, si se confirma) |
+| ITA Setup / Chk Swipes (reloj con badge) | Kiosco opcional (fase 11) |
+
+Detalle y reglas en [docs/ESPECIFICACION.md](docs/ESPECIFICACION.md) §2.3, §4, §5 y §11.
+
+**No se replica:** Window / Help (menús de app de escritorio) y el respaldo a disquete (lo reemplazan los backups de Supabase).
 
 ## Estructura
 
@@ -85,7 +125,8 @@ Para volver al estado inicial usa **Configuración › Datos e importación › 
 src/
   lib/types.ts      modelo de datos (= tablas de supabase/schema.sql)
   lib/store.tsx     capa de datos (localStorage en la demo) + permisos por rol
-  lib/calc.ts       horas, balance, ausencias consecutivas, midpoints, graduación proyectada
+  lib/calc.ts       horas (programadas con feriados parciales), balance, ausencias consecutivas, midpoints, graduación proyectada
+  lib/config.ts     catálogos, escala de notas, SAP y costos por defecto + migración de datos guardados
   lib/actions.ts    crear estudiante, registrar pago, recordatorios
   lib/seed.ts       datos ficticios
   pages/            una página por módulo
