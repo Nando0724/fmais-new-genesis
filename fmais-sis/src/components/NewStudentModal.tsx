@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createStudent, newStudentMissing, possibleDuplicates, type NewStudentInput } from "../lib/actions";
+import { activeOptions } from "../lib/config";
 import { useStore } from "../lib/store";
 import type { PaymentMethod } from "../lib/types";
 import { addDays, fullName, money, today } from "../lib/utils";
 import { useToast } from "./Layout";
 import { Button, cx, Field, Input, Modal, Select } from "./ui";
 
-const METHODS: PaymentMethod[] = ["Card", "Affirm", "FMAIS Plan", "Zelle", "Cash", "Check"];
 
 // Campos obligatorios vacíos con fondo amarillo, como en Genesis.
 const req = (empty: boolean) => cx(empty && "!border-amber-300 !bg-amber-50");
@@ -170,7 +170,7 @@ export default function NewStudentModal({ open, onClose, initial, onCreated }: {
             <Field label="Depósito recibido"><Input type="number" min={0} value={f.deposit ?? 0} onChange={(e) => set("deposit", Number(e.target.value))} /></Field>
             <Field label="Método del depósito">
               <Select value={f.depositMethod} onChange={(e) => set("depositMethod", e.target.value as PaymentMethod)}>
-                {METHODS.map((m) => <option key={m}>{m}</option>)}
+                {activeOptions(db, "payment_method", f.depositMethod).map((o) => <option key={o.id} value={o.value}>{o.value}</option>)}
               </Select>
             </Field>
             {total > 0 && (

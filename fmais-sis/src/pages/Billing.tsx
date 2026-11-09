@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useToast } from "../components/Layout";
 import { Badge, Button, Card, Empty, Modal, PageHeader, Select, Stat, Table, Tabs, Td, Th } from "../components/ui";
 import { recordPayment, zelleReminder } from "../lib/actions";
-import { balance, nextReceipt, planStatus } from "../lib/calc";
+import { balance, liveLedger, nextReceipt, planStatus } from "../lib/calc";
 import { useStore } from "../lib/store";
 import type { EmailLog } from "../lib/types";
 import { displayName, fmtDate, fmtDateTime, money, today } from "../lib/utils";
@@ -32,7 +32,7 @@ export default function Billing() {
 
   const toRemind = db.plans.filter((p) => p.mode === "zelle" && ["overdue", "due_soon"].includes(planStatus(p, db)) && (!p.lastReminderAt || Date.now() - new Date(p.lastReminderAt).getTime() > 86400000));
   const toCharge = db.plans.filter((p) => p.active && p.mode === "autopay" && p.nextDue <= T);
-  const monthPayments = db.ledger.filter((l) => l.payment > 0 && l.date.slice(0, 7) === T.slice(0, 7));
+  const monthPayments = liveLedger(db).filter((l) => l.payment > 0 && l.date.slice(0, 7) === T.slice(0, 7));
   const overdueAmt = db.plans.filter((p) => planStatus(p, db) === "overdue").reduce((t, p) => t + p.amount, 0);
 
   const runReminders = () => {
@@ -104,16 +104,20 @@ export default function Billing() {
             <Table>
               <thead><tr><Th>Fecha</Th><Th>Estudiante</Th><Th>Concepto</Th><Th>Método</Th><Th>Recibo</Th><Th className="text-right">Monto</Th></tr></thead>
               <tbody>
-                {db.ledger.filter((l) => l.payment > 0).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 150).map((l) => {
+                {db.ledger.filter((l) => l.payment !== 0).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 150).map((l) => {
                   const s = sById.get(l.studentId);
                   return (
-                    <tr key={l.id}>
-                      <Td>{fmtDate(l.date)}</Td>
+                    <tr key={l.id} className={l.voided ? "text-slate-400" : undefined}>
+                      <Td className={l.voided ? "line-through" : undefined}>{fmtDate(l.date)}</Td>
                       <Td>{s ? <Link className="hover:underline" to={`/students/${s.id}?tab=ledger`}>{displayName(s)}</Link> : "—"}</Td>
-                      <Td>{l.description}</Td>
+                      <Td>
+                        <span className={l.voided ? "line-through" : undefined}>{l.description}</span>{" "}
+                        {l.voided && <Badge tone="red">Anulado</Badge>}
+                        {!l.voided && l.payment < 0 && <Badge tone="violet">Reembolso</Badge>}
+                      </Td>
                       <Td>{l.method}</Td>
                       <Td className="font-mono text-xs">{l.receipt}</Td>
-                      <Td className="text-right tabular-nums text-emerald-700">{money(l.payment)}</Td>
+                      <Td className={`text-right tabular-nums ${l.voided ? "line-through" : l.payment < 0 ? "text-violet-700" : "text-emerald-700"}`}>{money(l.payment)}</Td>
                     </tr>
                   );
                 })}

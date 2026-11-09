@@ -1,5 +1,5 @@
 // Datos de demostración 100% ficticios. Se regeneran relativos a la fecha de hoy.
-import { costsFrom, DEFAULT_GRADE_SCALE, defaultSap, programTotal, seedSelections } from "./config";
+import { costsFrom, DEFAULT_GRADE_SCALE, defaultSap, ensurePhase1, programTotal, seedSelections } from "./config";
 import { ensureMarketing } from "./seedMarketing";
 import type {
   AttendanceRecord, DB, EmailLog, Grade, Lead, LeadActivity, LeadSource, LeadStage, LedgerEntry,
@@ -210,7 +210,7 @@ export function buildSeed(): DB {
 
     // Ledger: cargos + depósito + pagos
     const total = programTotal(p);
-    ledger.push(...p.costs.filter((c) => c.autoPost).map((c) => ({ id: id("l"), studentId: sid, date: enrollmentDate, enteredBy: "u_fin", description: c.description, charge: c.amount, payment: 0 })));
+    ledger.push(...p.costs.filter((c) => c.autoPost).map((c) => ({ id: id("l"), studentId: sid, date: enrollmentDate, enteredBy: "u_fin", description: c.description, charge: c.amount, payment: 0, account: c.account, institutional: c.institutional, autoPosted: true })));
     const method = pick(methods);
     const deposit = Math.min(1500, total);
     ledger.push({ id: id("l"), studentId: sid, date: enrollmentDate, enteredBy: "u_fin", description: "Depósito de inscripción", charge: 0, payment: deposit, receipt: String(receipt++), method });
@@ -238,6 +238,16 @@ export function buildSeed(): DB {
       plan.nextDue = addMonths(plan.nextDue, 1);
     }
     if (status === "Withdrawn" || status === "Dropped") plan.active = false;
+    // Ejemplos de las reglas del ledger: un reembolso (pago negativo) y un asiento anulado.
+    if (status === "Withdrawn" && i % 2 === 0) {
+      ledger.push({ id: id("l"), studentId: sid, date: addDays(firstClass, 75), enteredBy: "u_fin", description: "Reembolso por retiro", charge: 0, payment: -250, receipt: String(receipt++), method: "Check", account: "Tuition", institutional: true });
+    }
+    if (late) {
+      ledger.push({
+        id: id("l"), studentId: sid, date: addDays(T, -50), enteredBy: "u_fin", description: "Tuition/Fees", charge: 0, payment: inst, receipt: String(receipt++), method: "Zelle", account: "Tuition", institutional: true,
+        voided: true, voidReason: "Zelle registrado dos veces", voidedBy: "u_fin", voidedAt: addDays(T, -49) + "T15:00:00.000Z",
+      });
+    }
     if (plan.installmentsLeft === 0) plan.active = false;
     if (Math.abs(total - paid) < 1 && plan.installmentsLeft === 0) {
       // redondeo
@@ -311,7 +321,7 @@ export function buildSeed(): DB {
   students.filter((s) => s.enrollmentDate >= addDays(T, -120)).forEach((s) => {
     const oe: OnlineEnrollment = {
       id: id("oe"), firstName: s.firstName, lastName: s.lastName, email: s.email, phone: s.cell, programId: s.programId, scheduleId: s.schedules[0].scheduleId,
-      stepsDone: 7, status: "completed", depositAmount: 1500, paymentMethod: ledger.find((l) => l.studentId === s.id && l.payment > 0)?.method,
+      stepsDone: 7, status: "completed", depositAmount: 1500, paymentMethod: ledger.find((l) => l.studentId === s.id && l.payment > 0)?.method as PaymentMethod | undefined,
       createdAt: s.enrollmentDate + "T14:00:00.000Z", updatedAt: s.enrollmentDate + "T14:12:00.000Z", leadId: s.leadId, studentId: s.id,
     };
     s.onlineEnrollmentId = oe.id;
@@ -332,7 +342,7 @@ export function buildSeed(): DB {
     body: "Este es el registro de emails. En la demo los emails no se envían: se guardan aquí para revisar el contenido.", kind: "other",
   });
 
-  return ensureMarketing({
+  return ensurePhase1(ensureMarketing({
     version: 1,
     settings: {
       schoolName: "Florida Medical & Aesthetic International School",
@@ -399,5 +409,5 @@ export function buildSeed(): DB {
     marketingTemplates: [],
     campaigns: [],
     marketingEvents: [],
-  });
+  }));
 }

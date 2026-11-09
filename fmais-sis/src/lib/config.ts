@@ -32,8 +32,8 @@ export const SELECTION_INFO: Record<SelectionType, { label: string; use: string;
   ethnicity: { label: "Etnia", use: "Ficha › Detalle", ready: true },
   dependency: { label: "Dependencia", use: "Ficha › Detalle (ayuda financiera)", ready: true },
   company: { label: "Empresas (colocación)", use: "Ficha › Colocación: llena contacto y dirección", ready: true },
-  account: { label: "Cuentas", use: "Costos del programa · Ledger (fase 3)", ready: true },
-  payment_method: { label: "Métodos de pago", use: "Ledger (fase 3)", ready: false },
+  account: { label: "Cuentas", use: "Costos del programa · Ledger", ready: true },
+  payment_method: { label: "Métodos de pago", use: "Ledger (pagos)", ready: true },
   lead_source: { label: "Fuentes de leads", use: "CRM (fase 7)", ready: false },
   vendor: { label: "Proveedores", use: "Inventario (fase 10)", ready: false },
   product_class: { label: "Clases de producto", use: "Inventario (fase 10)", ready: false },
@@ -78,6 +78,29 @@ export const letterFor = (percent: number | undefined, p?: Program) => {
   return [...scale].sort((a, b) => b.min - a.min).find((b) => percent >= b.min)?.letter ?? "—";
 };
 
+/** Cuenta que corresponde a un concepto (para asientos viejos o importados que no la traen). */
+export const accountFor = (description: string) => {
+  const d = description.toLowerCase();
+  if (d.includes("registration")) return "Registration";
+  if (d.includes("suppl")) return "Supplies";
+  if (d.includes("kit") || d.includes("uniform")) return "Kit";
+  if (d.includes("tuition") || d.includes("depósito") || d.includes("deposit") || d.includes("cuota")) return "Tuition";
+  return "Other";
+};
+
+/** Completa asientos guardados antes de la fase 3 (sin cuenta, sin fecha de creación). */
+function ensureLedger(db: DB): DB {
+  if (db.ledger.every((l) => l.account && l.createdAt)) return db;
+  return {
+    ...db,
+    ledger: db.ledger.map((l) =>
+      l.account && l.createdAt
+        ? l
+        : { ...l, account: l.account ?? accountFor(l.description), institutional: l.institutional ?? true, createdAt: l.createdAt ?? `${l.date}T12:00:00.000Z` },
+    ),
+  };
+}
+
 /** Completa datos guardados antes de la fase 1 (programas con 3 montos fijos, sin catálogos, etc.). */
 export function ensurePhase1(db: DB): DB {
   let n = 0;
@@ -94,7 +117,7 @@ export function ensurePhase1(db: DB): DB {
       sap: p.sap ?? defaultSap(),
     } as Program;
   });
-  return {
+  return ensureLedger({
     ...db,
     programs,
     selections: db.selections ?? seedSelections(),
@@ -104,5 +127,5 @@ export function ensurePhase1(db: DB): DB {
       checkMidpointsOnLogin: db.settings.checkMidpointsOnLogin ?? true,
       checkMissingOutOnLogin: db.settings.checkMissingOutOnLogin ?? true,
     },
-  };
+  });
 }

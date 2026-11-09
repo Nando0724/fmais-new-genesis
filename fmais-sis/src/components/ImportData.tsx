@@ -4,7 +4,8 @@ import { Upload } from "lucide-react";
 import { useMemo, useState } from "react";
 import { nextBadge } from "../lib/calc";
 import { useStore } from "../lib/store";
-import type { AttendanceRecord, EnrollmentStatus, Lead, LedgerEntry, PaymentMethod, Student } from "../lib/types";
+import { accountFor } from "../lib/config";
+import type { AttendanceRecord, EnrollmentStatus, Lead, LedgerEntry, Student } from "../lib/types";
 import { hoursBetween, nowISO, parseCSV, toISODate, today, uid } from "../lib/utils";
 import { useToast } from "./Layout";
 import { Badge, Button, Card, Field, Select, Table, Td, Th } from "./ui";
@@ -87,7 +88,12 @@ export function toTime(v?: string) {
   return `${String(h).padStart(2, "0")}:${m[2]}`;
 }
 
-const num = (v?: string) => Number(String(v ?? "").replace(/[$,\s]/g, "")) || 0;
+// Acepta "$1,500.00", "-250" y el formato contable "(250.00)" = negativo (así salen los reembolsos en Excel).
+const num = (v?: string) => {
+  const raw = String(v ?? "").replace(/[$,\s]/g, "");
+  const neg = /^\(.*\)$/.test(raw);
+  return (Number(raw.replace(/[()]/g, "")) || 0) * (neg ? -1 : 1);
+};
 
 const STATUS_MAP: Record<string, EnrollmentStatus> = {
   enrolled: "Enrolled", active: "Enrolled", graduated: "Graduated", withdrawn: "Withdrawn", dropped: "Dropped", loa: "LOA", "leave of absence": "LOA", applicant: "Applicant",
@@ -165,7 +171,12 @@ export default function ImportData() {
       rows.forEach((r) => {
         const s = byBadge.get(get(r, "badge") ?? "");
         if (!s) return skipped++;
-        out.push({ id: uid(), studentId: s.id, date: toDate(get(r, "date")) || today(), enteredBy: "import", description: get(r, "description") || "Tuition/Fees", charge: num(get(r, "charge")), payment: num(get(r, "payment")), receipt: get(r, "receipt") || undefined, method: (get(r, "method") as PaymentMethod) || undefined });
+        const description = get(r, "description") || "Tuition/Fees";
+        out.push({
+          id: uid(), studentId: s.id, date: toDate(get(r, "date")) || today(), enteredBy: "import", description,
+          charge: num(get(r, "charge")), payment: num(get(r, "payment")), receipt: get(r, "receipt") || undefined, method: get(r, "method") || undefined,
+          account: accountFor(description), institutional: true, createdAt: nowISO(),
+        });
       });
       saveMany("ledger", out, `import:ledger:${fileName}`);
       toast(`${out.length} movimientos importados${skipped ? `, ${skipped} sin estudiante con ese badge` : ""}.`);

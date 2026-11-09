@@ -113,12 +113,22 @@ Mientras los valores de SAP no estén confirmados, el programa muestra la etique
 | Enrollment: horas importadas + "Start Tracking Hours Using Genesis" | Ficha › Inscripción › Empezar a contar asistencia desde |
 | Student Search System | Estudiantes (búsqueda y filtros) |
 
+**Fase 3 (hecha):**
+
+| Genesis (manual) | Aquí |
+|---|---|
+| Ledger › Add: Debit / Credit / Debit w/auto Credit | Ficha › Ledger › Cargo · Pago · Cargo + pago (dos asientos enlazados) |
+| Apply To Account · Institutional | Cuenta (catálogo) e Institucional en cada asiento |
+| Void Entry | Anular con motivo: queda tachado, no suma en balance ni reportes, nunca se borra |
+| Refund = negative credit (1098-T) | Pago con casilla "Es un reembolso" (se guarda negativo) |
+| Modified user / date · flagged for verification | "Por verificar" + botón Marcar verificado; historial al pasar el mouse |
+| Receipt number + Print Receipt | Recibo automático y pregunta "¿Imprimir recibo?" al registrar un pago |
+
 **Pendiente de construir (especificación v0.3):**
 
 | Genesis (manual) | Aquí (planeado) |
 |---|---|
 | Tasks › Academic · Attendance · Ledger (desembolso de un cheque) | Menú **Tareas** (en lote) |
-| Ledger: tipos, cuenta, institucional, anular, reembolso negativo, por verificar | Ficha › Ledger |
 | Pestaña SAP · Check Midpoints con SAP en lote | Ficha › SAP · Centro de alertas |
 | ITA Check Attendance y hojas de firma | Asistencia |
 | 29 reportes del manual | Reportes |

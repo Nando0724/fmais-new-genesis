@@ -299,10 +299,24 @@ export interface LedgerEntry {
   enteredBy: string;
   description: string;
   charge: number;
-  payment: number;
+  payment: number; // negativo = reembolso (así lo pide el reporte 1098-T)
   receipt?: string;
-  method?: PaymentMethod;
+  method?: string; // valor del catálogo "payment_method"; solo en pagos
   planId?: string;
+  account?: string; // valor del catálogo "account"
+  institutional?: boolean; // cuenta en el cálculo de reembolso
+  autoPosted?: boolean; // cargado solo al inscribir (costos del programa)
+  linkedId?: string; // "Cargo con pago automático": el asiento par
+  createdAt?: string;
+  modifiedBy?: string;
+  modifiedAt?: string;
+  verifiedBy?: string; // alguien revisó el aviso "por verificar"
+  verifiedAt?: string;
+  // Anular en vez de borrar: sigue visible, no suma en balance ni reportes.
+  voided?: boolean;
+  voidReason?: string;
+  voidedBy?: string;
+  voidedAt?: string;
 }
 
 export interface PaymentPlan {

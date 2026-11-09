@@ -1,5 +1,5 @@
 // Cálculos derivados (equivalentes a las funciones automáticas de Genesis).
-import type { DB, PaymentPlan, Schedule, Student } from "./types";
+import type { DB, LedgerEntry, PaymentPlan, Schedule, Student } from "./types";
 import { addDays, addMonths, diffDays, hoursBetween, parseDate, today } from "./utils";
 
 export const currentScheduleId = (s: Student, on = today()) => {
@@ -39,11 +39,21 @@ export const progressPct = (s: Student, db: DB) => {
   return total ? Math.min(100, Math.round((hoursAttended(s, db) / total) * 100)) : 0;
 };
 
+/** Asientos que cuentan: todos menos los anulados. Usar siempre en balances y reportes. */
+export const liveLedger = (db: DB) => db.ledger.filter((l) => !l.voided);
+
 export const studentLedger = (studentId: string, db: DB) =>
-  db.ledger.filter((l) => l.studentId === studentId).sort((a, b) => b.date.localeCompare(a.date));
+  liveLedger(db).filter((l) => l.studentId === studentId).sort((a, b) => b.date.localeCompare(a.date));
 
 export const balance = (studentId: string, db: DB) =>
-  Math.round(db.ledger.filter((l) => l.studentId === studentId).reduce((t, l) => t + l.charge - l.payment, 0) * 100) / 100;
+  Math.round(liveLedger(db).filter((l) => l.studentId === studentId).reduce((t, l) => t + l.charge - l.payment, 0) * 100) / 100;
+
+/**
+ * "Por verificar" (manual de Genesis §6.7): el asiento se modificó en una fecha distinta a la suya
+ * y nadie lo ha revisado después del cambio.
+ */
+export const needsVerification = (l: LedgerEntry) =>
+  !!l.modifiedAt && l.modifiedAt.slice(0, 10) !== l.date && (!l.verifiedAt || l.verifiedAt < l.modifiedAt);
 
 const inLOA = (s: Student, date: string) => s.loas.some((l) => l.start <= date && (!l.end || l.end >= date));
 

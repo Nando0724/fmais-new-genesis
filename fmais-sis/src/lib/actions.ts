@@ -106,10 +106,10 @@ export function createStudent(store: Store, input: NewStudentInput): Student {
   // Auto-ledger: se cargan los costos del programa marcados "Cargar al inscribir".
   const entries: LedgerEntry[] = (input.autoLedger === false ? [] : program.costs)
     .filter((c) => c.autoPost && c.amount)
-    .map((c) => ({ id: uid(), studentId: student.id, date: T, enteredBy: by, description: c.description, charge: c.amount, payment: 0 }));
+    .map((c) => ({ id: uid(), studentId: student.id, date: T, enteredBy: by, description: c.description, charge: c.amount, payment: 0, account: c.account, institutional: c.institutional, autoPosted: true, createdAt: nowISO() }));
   let receipt = Number(nextReceipt(db));
   if (input.deposit) {
-    entries.push({ id: uid(), studentId: student.id, date: T, enteredBy: by, description: "Depósito de inscripción", charge: 0, payment: input.deposit, receipt: String(receipt++), method: input.depositMethod ?? "Card" });
+    entries.push({ id: uid(), studentId: student.id, date: T, enteredBy: by, description: "Depósito de inscripción", charge: 0, payment: input.deposit, receipt: String(receipt++), method: input.depositMethod ?? "Card", account: "Tuition", institutional: true, createdAt: nowISO() });
   }
   const total = entries.reduce((t, e) => t + e.charge, 0) - (input.deposit ?? 0);
   const installments = input.installments ?? 6;
@@ -155,6 +155,9 @@ export function recordPayment(store: Store, args: { studentId: string; amount: n
     receipt,
     method: args.method,
     planId: args.plan?.id,
+    account: "Tuition",
+    institutional: true,
+    createdAt: nowISO(),
   });
   if (args.plan) {
     const left = args.plan.installmentsLeft - 1;
@@ -171,6 +174,85 @@ export function recordPayment(store: Store, args: { studentId: string; amount: n
     }, { studentId: s.id });
   }
   return receipt;
+}
+
+// ── Ledger (reglas del manual de Genesis §6.7) ────────────────────
+
+export type EntryKind = "charge" | "payment" | "charge_auto_payment";
+
+export interface EntryInput {
+  id?: string; // presente = edición
+  studentId: string;
+  kind: EntryKind;
+  date: string;
+  description: string;
+  amount: number; // en pagos, negativo = reembolso
+  account: string;
+  institutional: boolean;
+  method?: string;
+}
+
+/** Valida un asiento. Devuelve el mensaje del problema o undefined. */
+export function entryProblem(e: EntryInput): string | undefined {
+  if (!e.description.trim()) return "Falta el concepto.";
+  if (!e.amount) return "El monto no puede ser 0.";
+  if (e.kind !== "payment" && e.amount < 0) return "Un cargo no puede ser negativo. Para devolver dinero registra un pago negativo (reembolso).";
+  if (!e.account) return "Elige la cuenta.";
+  if (e.kind !== "charge" && !e.method) return "Elige el método de pago.";
+  return undefined;
+}
+
+/**
+ * Crea o edita un asiento. "Cargo con pago automático" crea dos asientos enlazados (cargo + pago).
+ * Devuelve el número de recibo si hubo pago nuevo.
+ */
+export function saveEntry(store: Store, e: EntryInput): string | undefined {
+  const { db, user } = store;
+  const by = user?.id ?? "system";
+  const now = nowISO();
+  const existing = e.id ? db.ledger.find((l) => l.id === e.id) : undefined;
+  const common = { studentId: e.studentId, date: e.date, description: e.description.trim(), account: e.account, institutional: e.institutional };
+
+  if (existing) {
+    const isPayment = existing.payment !== 0;
+    store.save("ledger", {
+      ...existing,
+      ...common,
+      charge: isPayment ? 0 : e.amount,
+      payment: isPayment ? e.amount : 0,
+      method: isPayment ? e.method : undefined,
+      modifiedBy: by,
+      modifiedAt: now,
+    }, "update");
+    return undefined;
+  }
+
+  const base = { ...common, enteredBy: by, createdAt: now };
+  if (e.kind === "charge") {
+    store.save("ledger", { ...base, id: uid(), charge: e.amount, payment: 0 }, "create");
+    return undefined;
+  }
+  const receipt = nextReceipt(db);
+  const pay: LedgerEntry = { ...base, id: uid(), charge: 0, payment: e.amount, method: e.method, receipt };
+  if (e.kind === "payment") {
+    store.save("ledger", pay, "create");
+  } else {
+    const charge: LedgerEntry = { ...base, id: uid(), charge: e.amount, payment: 0, linkedId: pay.id };
+    store.saveMany("ledger", [charge, { ...pay, linkedId: charge.id }], "create:charge_auto_payment");
+  }
+  return receipt;
+}
+
+/** Anula un asiento (y su par, si es "cargo con pago automático"). Nunca se borra. */
+export function voidEntry(store: Store, entry: LedgerEntry, reason: string) {
+  const { db, user } = store;
+  const stamp = { voided: true, voidReason: reason, voidedBy: user?.id ?? "system", voidedAt: nowISO() };
+  const pair = entry.linkedId ? db.ledger.find((l) => l.id === entry.linkedId && !l.voided) : undefined;
+  store.saveMany("ledger", [{ ...entry, ...stamp }, ...(pair ? [{ ...pair, ...stamp }] : [])], "void");
+}
+
+export function verifyEntry(store: Store, entry: LedgerEntry) {
+  store.save("ledger", { ...entry, verifiedBy: store.user?.id ?? "system", verifiedAt: nowISO() }, "verify");
 }
 
 export function zelleReminder(store: Store, plan: PaymentPlan) {

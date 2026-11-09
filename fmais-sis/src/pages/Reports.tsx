@@ -1,7 +1,7 @@
 import { Download, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Card, cx, Empty, Field, Input, PageHeader, Select, Table, Td, Th, Button } from "../components/ui";
-import { balance, currentSchedule, hoursAttended, lastAttended, planStatus, programOf } from "../lib/calc";
+import { balance, currentSchedule, hoursAttended, lastAttended, liveLedger, planStatus, programOf } from "../lib/calc";
 import { useStore, userName } from "../lib/store";
 import { LEAD_SOURCES } from "../lib/types";
 import { addDays, downloadFile, fmtDate, fullName, money, SOURCE_LABEL, toCSV, today } from "../lib/utils";
@@ -15,7 +15,7 @@ const REPORTS: { id: ReportId; name: string; desc: string }[] = [
   { id: "delinquency", name: "Morosidad", desc: "Balances pendientes y pagos vencidos." },
   { id: "placement", name: "Graduados y colocación", desc: "Graduación, examen estatal y empleo por programa." },
   { id: "admissions", name: "Admisiones por fuente", desc: "Leads, contacto, conversión y tiempo de respuesta." },
-  { id: "revenue", name: "Ingresos", desc: "Pagos recibidos por mes y método." },
+  { id: "revenue", name: "Ingresos", desc: "Pagos recibidos por mes y método, menos reembolsos. No incluye anulados." },
   { id: "labels", name: "Etiquetas", desc: "Etiquetas de correo imprimibles (Labels)." },
 ];
 
@@ -77,12 +77,21 @@ export default function Reports() {
           };
         }).filter((r) => r.Leads > 0);
       case "revenue": {
-        const pays = db.ledger.filter((l) => l.payment > 0 && l.date >= from && l.date <= to);
+        // Sin anulados. Los reembolsos (pagos negativos) se restan del total del mes.
+        const pays = liveLedger(db).filter((l) => l.payment !== 0 && l.date >= from && l.date <= to);
         const months = [...new Set(pays.map((l) => l.date.slice(0, 7)))].sort();
-        const methods = [...new Set(pays.map((l) => l.method ?? "—"))];
+        const methods = [...new Set(pays.filter((l) => l.payment > 0).map((l) => l.method ?? "—"))];
+        const sum = (ls: typeof pays) => ls.reduce((t, l) => t + l.payment, 0);
         return months.map((m) => {
           const pm = pays.filter((l) => l.date.startsWith(m));
-          return { Mes: m, ...Object.fromEntries(methods.map((me) => [me, money(pm.filter((l) => (l.method ?? "—") === me).reduce((t, l) => t + l.payment, 0))])), Total: money(pm.reduce((t, l) => t + l.payment, 0)), Pagos: pm.length };
+          const refunds = pm.filter((l) => l.payment < 0);
+          return {
+            Mes: m,
+            ...Object.fromEntries(methods.map((me) => [me, money(sum(pm.filter((l) => l.payment > 0 && (l.method ?? "—") === me)))])),
+            Reembolsos: refunds.length ? money(sum(refunds)) : "—",
+            "Total neto": money(sum(pm)),
+            Pagos: pm.filter((l) => l.payment > 0).length,
+          };
         });
       }
       default:
