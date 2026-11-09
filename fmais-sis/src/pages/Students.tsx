@@ -1,9 +1,9 @@
 import { Download, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import NewStudentModal from "../components/NewStudentModal";
 import { Badge, Button, Card, Empty, Input, PageHeader, Progress, Select, Table, Td, Th, type Tone } from "../components/ui";
-import { balance, consecutiveAbsences, currentSchedule, hoursAttended, isAboutToGrad, lastAttended, programOf, progressPct } from "../lib/calc";
+import { balance, consecutiveAbsences, currentSchedule, hoursAttended, isAboutToGrad, lastAttended, liveLedger, needsVerification, programOf, progressPct } from "../lib/calc";
 import { useStore } from "../lib/store";
 import type { EnrollmentStatus } from "../lib/types";
 import { downloadFile, fmtDate, fullName, money, toCSV, today } from "../lib/utils";
@@ -17,13 +17,17 @@ export default function Students() {
   const [q, setQ] = useState("");
   const [program, setProgram] = useState("");
   const [schedule, setSchedule] = useState("");
-  const [status, setStatus] = useState<string>("Enrolled");
-  const [flag, setFlag] = useState("");
+  const [params] = useSearchParams();
+  // Si se llega con un filtro especial (p. ej. desde el Centro de alertas), se muestran todos los estados.
+  const [flag, setFlag] = useState(params.get("flag") ?? "");
+  const [status, setStatus] = useState<string>(params.get("flag") ? "" : "Enrolled");
   const [instructor, setInstructor] = useState("");
   const [record, setRecord] = useState("");
   const [creating, setCreating] = useState(false);
   const isInstructor = user?.role === "instructor";
   const instructors = db.users.filter((u) => u.role === "instructor");
+
+  const toVerify = useMemo(() => new Set(liveLedger(db).filter(needsVerification).map((l) => l.studentId)), [db]);
 
   const rows = useMemo(() => {
     // Busca por nombre en cualquier orden, badge, email o celular (también sin guiones ni paréntesis).
@@ -43,9 +47,14 @@ export default function Students() {
       .filter((x) => !instructor || (instructor === "none" ? !x.instructorId : x.instructorId === instructor))
       .filter((x) => !schedule || currentSchedule(x, db)?.id === schedule)
       .map((x) => ({ s: x, hours: hoursAttended(x, db), pct: progressPct(x, db), bal: balance(x.id, db), last: lastAttended(x, db), abs: consecutiveAbsences(x, db) }))
-      .filter((r) => !flag || (flag === "balance" ? r.bal > 0 : flag === "grad" ? isAboutToGrad(r.s, db) : r.abs >= db.settings.absenceThreshold))
+      .filter((r) =>
+        !flag ? true
+        : flag === "balance" ? r.bal > 0
+        : flag === "grad" ? isAboutToGrad(r.s, db)
+        : flag === "verify" ? toVerify.has(r.s.id)
+        : r.abs >= db.settings.absenceThreshold)
       .sort((a, b) => a.s.lastName.localeCompare(b.s.lastName));
-  }, [db, q, program, status, schedule, flag, instructor, record, isInstructor, user]);
+  }, [db, q, program, status, schedule, flag, instructor, record, isInstructor, user, toVerify]);
 
   const exportCSV = () =>
     downloadFile(
@@ -100,6 +109,7 @@ export default function Students() {
           <Select value={flag} onChange={(e) => setFlag(e.target.value)} className="w-48">
             <option value="">Sin filtro especial</option>
             {!isInstructor && <option value="balance">Con balance pendiente</option>}
+            {!isInstructor && <option value="verify">Ledger por verificar</option>}
             <option value="grad">Por graduar</option>
             <option value="absent">Ausencias consecutivas</option>
           </Select>

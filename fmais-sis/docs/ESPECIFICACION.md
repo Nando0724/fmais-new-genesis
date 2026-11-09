@@ -1,6 +1,6 @@
 # FMAIS — Sistema Administrativo Centralizado (reemplazo de Genesis-SMSS)
 
-**Fecha:** 2026-11-09 · **Estado:** v0.3 — especificación alineada con el manual oficial de Genesis-SMSS (`genesis-manual.pdf`, 115 págs.). Lo nuevo de v0.3 está marcado con 🆕. **Las fases 1, 2 y 3 (§11) ya están en la demo**; el resto de lo marcado 🆕 aún no. Preguntas abiertas en §12.
+**Fecha:** 2026-11-09 · **Estado:** v0.3 — especificación alineada con el manual oficial de Genesis-SMSS (`genesis-manual.pdf`, 115 págs.). Lo nuevo de v0.3 está marcado con 🆕. **Las fases 1 a 4 (§11) ya están en la demo**; el resto de lo marcado 🆕 aún no. Preguntas abiertas en §12.
 
 ## 1. Objetivo
 
@@ -308,7 +308,7 @@ El flujo completo ya se puede probar en **Marketing** (`src/pages/Marketing.tsx`
 | 1 ✅ | Roles/permisos · escuela (licencia) · **catálogos (Selections)** · programas completos (info, costos, escala de notas, funciones académicas, SAP, midpoints) · horarios Mañana / Noche · feriados y ajustes parciales · auto-logout. **Hecha en la demo** (2026-11-09). |
 | 2 ✅ | Estudiantes: alta (desde lead / inscripción / manual) con campos obligatorios, aviso de duplicados, auto-ledger y alta de estudiantes que ya venían cursando (horas importadas + fecha de inicio de conteo); ficha Detail (Auto Zero EFC, Exceptions) + Enrollment; lista con búsqueda y filtros por instructor y registro. **Hecha en la demo** (2026-11-09). |
 | 3 ✅ | Ledger con las reglas de §5.1: tipos (cargo, pago, cargo con pago automático enlazado), cuenta en todo asiento, institucional, anular con motivo en vez de borrar, reembolsos como pago negativo, auto-post, recibo con número e impresión, creado/modificado por y "por verificar" con marca de verificado. Solo Dueño, Administrador y Finanzas escriben. Balance, Cobros y Reportes ignoran los anulados. (Sin overtime: no se cobra.) **Hecha en la demo** (2026-11-09). |
-| 4 | Asistencia individual y **en lote**, horas programadas/asistidas (§5.2), Check Attendance y hojas de firma, Centro de alertas (ausencias, salidas sin marcar, por graduar) |
+| 4 ✅ | Asistencia **en lote** por fecha, programa y horario (prellenada con el horario, Presente / Ausente / Excusado, "Procesar" guarda solo lo nuevo o cambiado); horas programadas vs. asistidas y % de asistencia (§5.2) con horas excusadas según la política SAP; Check Attendance (quién no ha llegado con teléfono y WhatsApp, Llegó / Salió con la hora actual) y hojas de firma imprimibles; Salidas sin marcar (Check Swipes); Centro de alertas en el Dashboard según rol y los interruptores de Automatizaciones. **Hecha en la demo** (2026-11-09). |
 | 5 | Académico (Exam / Written / Requirement) individual y **en lote**, **SAP** y cola de **midpoints**, colocación |
 | 6 | **Desembolso en lote**, catálogo completo de reportes (§5.6), etiquetas |
 | 7 | CRM de admisiones + seguimientos + integración con el portal de inscripción |

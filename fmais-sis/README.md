@@ -63,7 +63,8 @@ Mientras los valores de SAP no estén confirmados, el programa muestra la etique
 | **Nuevo estudiante** | Trae los datos de un lead del CRM, marca en amarillo los campos obligatorios, avisa si ya existe alguien con el mismo email o celular y permite elegir si se cargan los costos del programa (auto-ledger). Para quien ya venía cursando en Genesis se ponen las horas hechas y la fecha desde la que se cuenta la asistencia, sin cargar día por día. |
 | **Ficha del estudiante** | Encabezado igual al de Genesis y pestañas: Resumen, Detalle, Inscripción, Académico, Asistencia, Ledger y pagos, Colocación, Documentos, Notas e Historial. |
 | **Cobros** | Planes de pago automáticos y por Zelle, con estado (vencido, vence pronto, al día). Envía recordatorios de Zelle en lote, ejecuta los cobros automáticos del día (simulados), registra los Zelle recibidos y guarda el registro de emails. |
-| **Asistencia** | Hoja diaria manual por horario (marca todos presentes de una vez y ajusta entradas y salidas). Alertas de ausencias consecutivas, estudiantes por graduar, midpoints alcanzados y LOA. |
+| **Asistencia** | **En lote** por fecha, programa y horario: viene prellenada con el horario, se marca Presente / Ausente / Excusado y "Procesar" guarda solo lo nuevo o cambiado. **Check Attendance**: quién no ha llegado (con teléfono y WhatsApp) y quién está en clase, con botones Llegó / Salió. **Hojas de firma** imprimibles. **Salidas sin marcar** para completar. **Alertas**: ausencias consecutivas, asistencia bajo el mínimo del SAP, por graduar, midpoints y LOA. |
+| **Centro de alertas** | En el Dashboard, según el rol: salidas sin marcar, ausencias, asistencia baja, midpoints, por graduar, LOA que terminan, pagos vencidos, asientos por verificar y licencia por vencer. Cada aviso lleva a donde se resuelve. |
 | **Reportes** | Roster, asistencia por rango de fechas, morosidad, graduados y colocación, admisiones por fuente, ingresos y etiquetas. Todos se exportan a CSV o se imprimen. |
 | **Configuración** | Escuela (con licencia estatal y aviso de vencimiento) · **Catálogos** (etnia, dependencia, empresas, cuentas… se desactivan, no se borran) · Programas (agregar, editar o copiar) con pestañas Información, Costos (cargar al inscribir / institucional), Escala de notas, Académico (Exam / Written / Requirement) y SAP y midpoints · Horarios · Feriados y ajustes (todo el día o unas horas, para todos o un programa) · Usuarios y permisos · Plantillas de email · Automatizaciones (incluye cierre de sesión por inactividad) · Fuentes de leads · Importación CSV y respaldo. |
 
@@ -124,16 +125,27 @@ Mientras los valores de SAP no estén confirmados, el programa muestra la etique
 | Modified user / date · flagged for verification | "Por verificar" + botón Marcar verificado; historial al pasar el mouse |
 | Receipt number + Print Receipt | Recibo automático y pregunta "¿Imprimir recibo?" al registrar un pago |
 
+**Fase 4 (hecha):**
+
+| Genesis (manual) | Aquí |
+|---|---|
+| Tasks › Attendance (Multiple Attendance Form) | Asistencia › Asistencia en lote |
+| ITA › Check Attendance (ausentes con teléfono, presentes) | Asistencia › Check Attendance |
+| Print Sign-In Sheets | Botón "Hoja de firmas" (por horario o todos) |
+| ITA › Check Swipes (falta la salida) | Asistencia › Salidas sin marcar |
+| Ventanas automáticas al iniciar sesión | Dashboard › Centro de alertas |
+| Horas excusadas (SAP › "treat excused hours as actual") | Tipo de asistencia "Excusado" + política del programa |
+| Scheduled vs. actual hours | Ficha › Asistencia: programadas, asistidas y % |
+
 **Pendiente de construir (especificación v0.3):**
 
 | Genesis (manual) | Aquí (planeado) |
 |---|---|
-| Tasks › Academic · Attendance · Ledger (desembolso de un cheque) | Menú **Tareas** (en lote) |
+| Tasks › Academic · Ledger (desembolso de un cheque) | Notas y desembolso en lote (fases 5 y 6) |
 | Pestaña SAP · Check Midpoints con SAP en lote | Ficha › SAP · Centro de alertas |
-| ITA Check Attendance y hojas de firma | Asistencia |
 | 29 reportes del manual | Reportes |
 | Inventory · Services · POS | Inventario (fase 10, si se confirma) |
-| ITA Setup / Chk Swipes (reloj con badge) | Kiosco opcional (fase 11) |
+| ITA Setup (reloj con badge, redondeo de swipes) | Kiosco opcional (fase 11) |
 
 Detalle y reglas en [docs/ESPECIFICACION.md](docs/ESPECIFICACION.md) §2.3, §4, §5 y §11.
 

@@ -267,7 +267,8 @@ export interface Student extends MarketingConsent {
   createdAt: string;
 }
 
-export type AttendanceType = "Regular" | "Makeup" | "Clinic" | "Non-Clinic" | "Absent";
+// Excused = horas excusadas: cuentan como asistidas solo si la política SAP del programa lo dice.
+export type AttendanceType = "Regular" | "Makeup" | "Clinic" | "Non-Clinic" | "Excused" | "Absent";
 
 export interface AttendanceRecord {
   id: string;

@@ -342,6 +342,12 @@ export function buildSeed(): DB {
     body: "Este es el registro de emails. En la demo los emails no se envían: se guardan aquí para revisar el contenido.", kind: "other",
   });
 
+  // Ejemplo de "salidas sin marcar": a dos estudiantes activos les falta la salida de su última clase.
+  students.filter((s) => s.status === "Enrolled").filter((_, i) => i % 9 === 4).slice(0, 2).forEach((s) => {
+    const last = attendance.filter((a) => a.studentId === s.id && a.type !== "Absent" && a.date < T).sort((a, b) => b.date.localeCompare(a.date))[0];
+    if (last) Object.assign(last, { timeOut: undefined, hours: 0 });
+  });
+
   return ensurePhase1(ensureMarketing({
     version: 1,
     settings: {

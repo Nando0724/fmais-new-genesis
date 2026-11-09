@@ -1,12 +1,45 @@
-import { AlertTriangle, CreditCard, GraduationCap, UserPlus, Users } from "lucide-react";
+import { AlertTriangle, Bell, CreditCard, GraduationCap, UserPlus, Users } from "lucide-react";
+import { buildAlerts } from "../lib/alerts";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge, Card, Empty, PageHeader, Stat } from "../components/ui";
 import { balance, consecutiveAbsences, isAboutToGrad, planStatus, remainingHours } from "../lib/calc";
-import { useStore, userName } from "../lib/store";
+import { canAccess, useStore, userName } from "../lib/store";
 import { LEAD_SOURCES, LEAD_STAGES } from "../lib/types";
 import { addDays, addMonths, displayName, fmtDate, money, SOURCE_LABEL, STAGE_LABEL, today } from "../lib/utils";
+
+const ALERT_STYLE = {
+  red: "border-red-200 bg-red-50 text-red-800",
+  amber: "border-amber-200 bg-amber-50 text-amber-800",
+  blue: "border-blue-200 bg-blue-50 text-blue-800",
+  green: "border-emerald-200 bg-emerald-50 text-emerald-800",
+};
+
+/** Centro de alertas: lo que Genesis mostraba en ventanas al iniciar sesión. */
+function AlertCenter() {
+  const { db, user } = useStore();
+  const alerts = useMemo(() => buildAlerts(db, user), [db, user]);
+  return (
+    <Card className="mt-5" title={<span className="flex items-center gap-2"><Bell size={15} /> Centro de alertas</span>} actions={canAccess(user?.role, "settings") && <Link to="/settings" className="text-xs text-brand-600 hover:underline">Configurar</Link>}>
+      {alerts.length ? (
+        <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-4">
+          {alerts.map((a) => (
+            <Link key={a.id} to={a.to} className={`rounded-lg border px-3 py-2 transition hover:shadow-sm ${ALERT_STYLE[a.tone]}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold">{a.title}</span>
+                <span className="text-lg font-semibold tabular-nums">{a.count}</span>
+              </div>
+              <div className="mt-0.5 text-xs opacity-80">{a.detail}</div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <Empty>Todo en orden: no hay alertas.</Empty>
+      )}
+    </Card>
+  );
+}
 
 export default function Dashboard() {
   const { db, user } = useStore();
@@ -58,6 +91,8 @@ export default function Dashboard() {
         <Stat label="Por cobrar" value={money(d.receivable)} sub={`${d.overdue.length} pagos vencidos`} tone="amber" icon={<CreditCard size={16} />} />
         <Stat label="Alertas de ausencia" value={d.absences.length} sub={`≥ ${db.settings.absenceThreshold} días seguidos`} tone="red" icon={<AlertTriangle size={16} />} />
       </div>
+
+      <AlertCenter />
 
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
         <Card title="Leads por fuente (30 días)" className="lg:col-span-2">
