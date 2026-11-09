@@ -1,6 +1,7 @@
 import { CreditCard, Mail, Play } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import Disbursement from "../components/Disbursement";
 import { useToast } from "../components/Layout";
 import { Badge, Button, Card, Empty, Modal, PageHeader, Select, Stat, Table, Tabs, Td, Th } from "../components/ui";
 import { recordPayment, zelleReminder } from "../lib/actions";
@@ -16,7 +17,7 @@ export default function Billing() {
   const store = useStore();
   const { db } = store;
   const toast = useToast();
-  const [tab, setTab] = useState<"plans" | "payments" | "emails">("plans");
+  const [tab, setTab] = useState<"plans" | "payments" | "disbursement" | "emails">("plans");
   const [mode, setMode] = useState("");
   const [st, setSt] = useState("active");
   const [email, setEmail] = useState<EmailLog | null>(null);
@@ -63,7 +64,7 @@ export default function Billing() {
         <Stat label="Planes automáticos" value={db.plans.filter((p) => p.active && p.mode === "autopay").length} tone="blue" />
         <Stat label="Planes Zelle" value={db.plans.filter((p) => p.active && p.mode === "zelle").length} tone="violet" />
       </div>
-      <Tabs tabs={[{ id: "plans", label: "Planes de pago" }, { id: "payments", label: "Pagos recibidos" }, { id: "emails", label: "Registro de emails" }]} value={tab} onChange={(t) => setTab(t as typeof tab)} />
+      <Tabs tabs={[{ id: "plans", label: "Planes de pago" }, { id: "payments", label: "Pagos recibidos" }, { id: "disbursement", label: "Desembolso en lote" }, { id: "emails", label: "Registro de emails" }]} value={tab} onChange={(t) => setTab(t as typeof tab)} />
       <div className="mt-4">
         {tab === "plans" && (
           <Card>
@@ -114,6 +115,7 @@ export default function Billing() {
                         <span className={l.voided ? "line-through" : undefined}>{l.description}</span>{" "}
                         {l.voided && <Badge tone="red">Anulado</Badge>}
                         {!l.voided && l.payment < 0 && <Badge tone="violet">Reembolso</Badge>}
+                        {l.batchId && <Badge tone="blue">Desembolso</Badge>}
                       </Td>
                       <Td>{l.method}</Td>
                       <Td className="font-mono text-xs">{l.receipt}</Td>
@@ -125,6 +127,7 @@ export default function Billing() {
             </Table>
           </Card>
         )}
+        {tab === "disbursement" && <Disbursement />}
         {tab === "emails" && (
           <Card>
             <p className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500">En la demo los emails no se envían; quedan aquí para revisar el contenido. En producción salen por el proveedor de email del portal.</p>

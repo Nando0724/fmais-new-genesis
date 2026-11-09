@@ -137,7 +137,9 @@ export function buildSeed(): DB {
       birthplace: pick(["Cuba", "Venezuela", "Colombia", "Miami, FL", "Honduras", "Nicaragua", "Perú"]),
       sex: r() < 0.85 ? "F" : "M",
       marital: pick(["Single", "Married", "Divorced"]),
-      ethnicity: "Hispanic",
+      // Derivados del índice (no del generador aleatorio) para no cambiar el resto de los datos de prueba.
+      ethnicity: ["Hispanic", "Hispanic", "Black or African American", "Hispanic", "White", "Hispanic", "Two or more", "Hispanic", "Asian"][i % 9],
+      locker: (status === "Enrolled" || status === "LOA") && i % 3 !== 0 ? String(100 + ((i * 7) % 80)) : undefined,
       education: pick(["High School Diploma", "GED", "Some College", "Bachelor's (foreign)"]),
       highSchool: pick(["Hialeah Senior High", "Miami Lakes Educational Center", "Foreign High School", "Barbara Goleman High"]),
       matriculationDate: enrollmentDate,
@@ -409,6 +411,7 @@ export function buildSeed(): DB {
     sapEvaluations: [],
     midpointReviews: [],
     ledger,
+    disbursementBatches: [],
     plans,
     emails,
     comments: [],

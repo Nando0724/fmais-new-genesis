@@ -134,6 +134,7 @@ export default function LedgerTab({ s }: { s: Student }) {
                     <div className="mt-0.5 flex flex-wrap gap-1">
                       {e.voided && <Badge tone="red">Anulado{e.voidReason ? `: ${e.voidReason}` : ""}</Badge>}
                       {e.payment < 0 && <Badge tone="violet">Reembolso</Badge>}
+                      {e.batchId && <Badge tone="blue">Desembolso</Badge>}
                       {e.autoPosted && <Badge>Auto</Badge>}
                       {e.institutional && <Badge tone="blue">Inst.</Badge>}
                       {pairLabel(e) && <Badge tone="slate">{pairLabel(e)}</Badge>}

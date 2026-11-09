@@ -340,6 +340,7 @@ export interface LedgerEntry {
   institutional?: boolean; // cuenta en el cálculo de reembolso
   autoPosted?: boolean; // cargado solo al inscribir (costos del programa)
   linkedId?: string; // "Cargo con pago automático": el asiento par
+  batchId?: string; // desembolso en lote del que salió este pago
   createdAt?: string;
   modifiedBy?: string;
   modifiedAt?: string;
@@ -350,6 +351,19 @@ export interface LedgerEntry {
   voidReason?: string;
   voidedBy?: string;
   voidedAt?: string;
+}
+
+/** Desembolso en lote (Tasks › Ledger de Genesis): un cheque o transferencia repartido entre varios estudiantes. */
+export interface DisbursementBatch {
+  id: string;
+  date: string;
+  method: string; // catálogo payment_method
+  reference: string; // número de cheque o de transferencia
+  description: string; // concepto en cada asiento (p. ej. "Pell Grant")
+  total: number;
+  entryIds: string[];
+  createdBy?: string;
+  at: string;
 }
 
 export interface PaymentPlan {
@@ -530,6 +544,7 @@ export interface DB {
   sapEvaluations: SapEvaluation[];
   midpointReviews: MidpointReview[];
   ledger: LedgerEntry[];
+  disbursementBatches: DisbursementBatch[];
   plans: PaymentPlan[];
   emails: EmailLog[];
   comments: Comment[];

@@ -1,156 +1,176 @@
-import { Download, Printer } from "lucide-react";
+import { Download, Printer, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Card, cx, Empty, Field, Input, PageHeader, Select, Table, Td, Th, Button } from "../components/ui";
-import { balance, currentSchedule, hoursAttended, lastAttended, liveLedger, planStatus, programOf } from "../lib/calc";
-import { useStore, userName } from "../lib/store";
-import { LEAD_SOURCES } from "../lib/types";
-import { addDays, downloadFile, fmtDate, fullName, money, SOURCE_LABEL, toCSV, today } from "../lib/utils";
-import { STATUS_LABEL } from "./Students";
-
-type ReportId = "roster" | "attendance" | "delinquency" | "placement" | "admissions" | "revenue" | "labels";
-
-const REPORTS: { id: ReportId; name: string; desc: string }[] = [
-  { id: "roster", name: "Roster", desc: "Estudiantes por programa, horario y estado." },
-  { id: "attendance", name: "Asistencia por rango", desc: "Horas, días presentes y ausentes por estudiante." },
-  { id: "delinquency", name: "Morosidad", desc: "Balances pendientes y pagos vencidos." },
-  { id: "placement", name: "Graduados y colocación", desc: "Graduación, examen estatal y empleo por programa." },
-  { id: "admissions", name: "Admisiones por fuente", desc: "Leads, contacto, conversión y tiempo de respuesta." },
-  { id: "revenue", name: "Ingresos", desc: "Pagos recibidos por mes y método, menos reembolsos. No incluye anulados." },
-  { id: "labels", name: "Etiquetas", desc: "Etiquetas de correo imprimibles (Labels)." },
-];
+import { Badge, Button, Card, cx, Empty, Field, Input, PageHeader, Select, Table, Td, Th } from "../components/ui";
+import { programOf } from "../lib/calc";
+import { printSignInSheets } from "../lib/print";
+import { expectedOn, filteredStudents, REPORT_GROUPS, REPORTS, STATUS_ES, type Filters, type ReportResult } from "../lib/reports";
+import { useStore } from "../lib/store";
+import { addDays, downloadFile, fmtDate, fullName, toCSV, today } from "../lib/utils";
 
 export default function Reports() {
-  const { db } = useStore();
-  const [rid, setRid] = useState<ReportId>("roster");
-  const [from, setFrom] = useState(addDays(today(), -30));
-  const [to, setTo] = useState(today());
-  const [program, setProgram] = useState("");
-  const [status, setStatus] = useState("Enrolled");
-
-  const rows = useMemo<Record<string, string | number>[]>(() => {
-    const byProgram = (s: { programId: string }) => !program || s.programId === program;
-    switch (rid) {
-      case "roster":
-        return db.students.filter(byProgram).filter((s) => !status || s.status === status).sort((a, b) => a.lastName.localeCompare(b.lastName)).map((s) => ({
-          Badge: s.badge, Nombre: fullName(s), Programa: programOf(s, db)?.code ?? "", Horario: currentSchedule(s, db)?.name ?? "", Estado: STATUS_LABEL[s.status],
-          "Primera clase": fmtDate(s.firstClass), "Grad. contrato": fmtDate(s.contractGrad), Horas: hoursAttended(s, db), Instructor: userName(db, s.instructorId), Celular: s.cell,
-        }));
-      case "attendance":
-        return db.students.filter(byProgram).filter((s) => !status || s.status === status).map((s) => {
-          const recs = db.attendance.filter((a) => a.studentId === s.id && a.date >= from && a.date <= to);
-          return {
-            Badge: s.badge, Nombre: fullName(s), Programa: programOf(s, db)?.code ?? "",
-            "Días presente": recs.filter((a) => a.type !== "Absent").length, "Ausencias registradas": recs.filter((a) => a.type === "Absent").length,
-            "Horas en rango": Math.round(recs.reduce((t, a) => t + a.hours, 0) * 100) / 100, "Horas totales": hoursAttended(s, db), "Último día": fmtDate(lastAttended(s, db)),
-          };
-        }).sort((a, b) => String(a.Nombre).localeCompare(String(b.Nombre)));
-      case "delinquency":
-        return db.students.filter(byProgram).map((s) => {
-          const plan = db.plans.find((p) => p.studentId === s.id && p.active);
-          return { s, bal: balance(s.id, db), plan, st: plan ? planStatus(plan, db) : "" };
-        }).filter((x) => x.bal > 0).sort((a, b) => b.bal - a.bal).map(({ s, bal, plan, st }) => ({
-          Badge: s.badge, Nombre: fullName(s), Estado: STATUS_LABEL[s.status], Balance: money(bal), Modalidad: plan ? (plan.mode === "zelle" ? "Zelle" : "Automático") : "Sin plan",
-          "Próximo pago": fmtDate(plan?.nextDue), Situación: st === "overdue" ? "VENCIDO" : st === "due_soon" ? "Vence pronto" : st === "ok" ? "Al día" : "—", Email: s.email,
-        }));
-      case "placement":
-        return db.programs.filter((p) => !program || p.id === program).map((p) => {
-          const grads = db.students.filter((s) => s.programId === p.id && s.status === "Graduated" && (s.completionDate ?? "") >= from && (s.completionDate ?? "") <= to);
-          const board = grads.filter((s) => s.placement.passedBoard === "Yes").length;
-          const hired = grads.filter((s) => s.placement.hireDate).length;
-          const withdrawn = db.students.filter((s) => s.programId === p.id && (s.status === "Withdrawn" || s.status === "Dropped")).length;
-          return {
-            Programa: p.name, Graduados: grads.length, "Pasaron examen estatal": board, Empleados: hired,
-            "Tasa de colocación": grads.length ? `${Math.round((hired / grads.length) * 100)}%` : "—", "Retirados / baja (total)": withdrawn,
-          };
-        });
-      case "admissions":
-        return LEAD_SOURCES.map((src) => {
-          const ls = db.leads.filter((l) => l.source === src && l.createdAt.slice(0, 10) >= from && l.createdAt.slice(0, 10) <= to).filter((l) => !program || l.programId === program);
-          const contacted = ls.filter((l) => l.firstContactAt);
-          const mins = contacted.map((l) => (new Date(l.firstContactAt!).getTime() - new Date(l.createdAt).getTime()) / 60000);
-          const enrolled = ls.filter((l) => l.stage === "enrolled").length;
-          return {
-            Fuente: SOURCE_LABEL[src], Leads: ls.length, Contactados: contacted.length, Inscritos: enrolled,
-            Conversión: ls.length ? `${Math.round((enrolled / ls.length) * 100)}%` : "—",
-            "Respuesta promedio": mins.length ? `${Math.round(mins.reduce((a, b) => a + b, 0) / mins.length)} min` : "—",
-            Perdidos: ls.filter((l) => l.stage === "lost").length,
-          };
-        }).filter((r) => r.Leads > 0);
-      case "revenue": {
-        // Sin anulados. Los reembolsos (pagos negativos) se restan del total del mes.
-        const pays = liveLedger(db).filter((l) => l.payment !== 0 && l.date >= from && l.date <= to);
-        const months = [...new Set(pays.map((l) => l.date.slice(0, 7)))].sort();
-        const methods = [...new Set(pays.filter((l) => l.payment > 0).map((l) => l.method ?? "—"))];
-        const sum = (ls: typeof pays) => ls.reduce((t, l) => t + l.payment, 0);
-        return months.map((m) => {
-          const pm = pays.filter((l) => l.date.startsWith(m));
-          const refunds = pm.filter((l) => l.payment < 0);
-          return {
-            Mes: m,
-            ...Object.fromEntries(methods.map((me) => [me, money(sum(pm.filter((l) => l.payment > 0 && (l.method ?? "—") === me)))])),
-            Reembolsos: refunds.length ? money(sum(refunds)) : "—",
-            "Total neto": money(sum(pm)),
-            Pagos: pm.filter((l) => l.payment > 0).length,
-          };
-        });
-      }
-      default:
-        return [];
-    }
-  }, [db, rid, from, to, program, status]);
-
-  const labelStudents = db.students.filter((s) => (!program || s.programId === program) && (!status || s.status === status));
-  const usesRange = ["attendance", "placement", "admissions", "revenue"].includes(rid);
-  const usesStatus = ["roster", "attendance", "labels"].includes(rid);
+  const { db, user } = useStore();
+  // El ledger (pagos, 1098-T) solo lo ven dueño, administración y finanzas.
+  const allowed = REPORTS.filter((r) => r.group !== "Ledger" || ["owner", "admin", "finance"].includes(user?.role ?? ""));
+  const [rid, setRid] = useState("stu_roster");
+  const [q, setQ] = useState("");
   const report = REPORTS.find((r) => r.id === rid)!;
+  const [f, setF] = useState<Filters>({ from: addDays(today(), -30), to: today(), year: new Date().getFullYear() - (new Date().getMonth() < 2 ? 1 : 0), program: "", status: "Enrolled", schedule: "", student: "", sort: "name" });
+  const set = (patch: Partial<Filters>) => setF({ ...f, ...patch });
+  const has = (k: (typeof report.filters)[number]) => report.filters.includes(k);
+
+  const choose = (id: string) => {
+    const r = REPORTS.find((x) => x.id === id)!;
+    setRid(id);
+    // Cada reporte arranca con su estado por defecto; un día solo usa "hoy".
+    setF({ ...f, status: r.defaultStatus ?? "", student: "", to: r.filters.includes("date") ? today() : f.to });
+  };
+
+  const result = useMemo<ReportResult>(() => (report.run ? report.run(db, f) : { rows: [] }), [db, f, report]);
+  const rows = result.rows;
+  const columns = rows.length ? Object.keys(rows[0]) : [];
+  const shown = allowed.filter((r) => !q || `${r.name} ${r.desc} ${r.genesis ?? ""} ${r.group}`.toLowerCase().includes(q.toLowerCase()));
+  const studentOptions = has("student") ? filteredStudents(db, { ...f, student: "" }) : [];
+  const years = [...new Set(db.ledger.map((l) => Number(l.date.slice(0, 4))))].sort((a, b) => b - a);
+
+  const exportCSV = () => downloadFile(`${report.id}-${today()}.csv`, toCSV(result.totals ? [...rows, result.totals] : rows));
+  const signIn = () =>
+    printSignInSheets(
+      db.settings.schoolName,
+      f.to,
+      db.schedules.filter((s) => !f.schedule || s.id === f.schedule).map((x) => ({
+        title: `${x.name} (${x.start}–${x.end})`,
+        students: expectedOn(db, f.to, x.id).map((s) => ({ name: fullName(s), badge: s.badge, program: programOf(s, db)?.code ?? "" })),
+      })),
+    );
+  const labelStudents = report.kind === "labels" ? filteredStudents(db, f) : [];
 
   return (
     <div>
-      <PageHeader title="Reportes" subtitle="Reemplazo de R-Reports y Labels de Genesis." />
-      <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
-        <div className="no-print space-y-1">
-          {REPORTS.map((r) => (
-            <button key={r.id} onClick={() => setRid(r.id)} className={cx("w-full rounded-lg px-3 py-2 text-left transition", rid === r.id ? "bg-brand-700 text-white" : "hover:bg-white")}>
-              <div className="text-sm font-medium">{r.name}</div>
-              <div className={cx("text-xs", rid === r.id ? "text-slate-200" : "text-slate-500")}>{r.desc}</div>
-            </button>
-          ))}
+      <PageHeader title="Reportes" subtitle={`Catálogo de reportes de Genesis (${allowed.filter((r) => !r.pending).length} disponibles). Todos se imprimen o exportan a CSV (abre en Excel).`} />
+      <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+        <div className="no-print space-y-3">
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
+            <Input placeholder="Buscar reporte…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-8" />
+          </div>
+          {REPORT_GROUPS.map((g) => {
+            const list = shown.filter((r) => r.group === g);
+            if (!list.length) return null;
+            return (
+              <div key={g}>
+                <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{g}</div>
+                {list.map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => !r.pending && choose(r.id)}
+                    disabled={!!r.pending}
+                    title={r.pending ?? r.desc}
+                    className={cx("w-full rounded-lg px-3 py-1.5 text-left text-sm transition", rid === r.id ? "bg-brand-700 font-medium text-white" : r.pending ? "cursor-not-allowed text-slate-400" : "hover:bg-white")}
+                  >
+                    {r.name}
+                    {r.pending && <span className="ml-1 text-[10px]">· pronto</span>}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </div>
+
         <Card
-          title={report.name}
+          title={<span>{report.name} {report.genesis && <span className="ml-1 text-xs font-normal text-slate-400">Genesis: {report.genesis}</span>}</span>}
           actions={
             <div className="no-print flex gap-2">
-              {rid !== "labels" && <Button size="sm" variant="secondary" disabled={!rows.length} onClick={() => downloadFile(`${rid}-${today()}.csv`, toCSV(rows))}><Download size={13} /> CSV</Button>}
-              <Button size="sm" variant="secondary" onClick={() => window.print()}><Printer size={13} /> Imprimir</Button>
+              {report.kind === "signin" ? (
+                <Button size="sm" onClick={signIn}><Printer size={13} /> Imprimir hojas</Button>
+              ) : (
+                <>
+                  {report.kind !== "labels" && <Button size="sm" variant="secondary" disabled={!rows.length} onClick={exportCSV}><Download size={13} /> CSV / Excel</Button>}
+                  <Button size="sm" variant="secondary" onClick={() => window.print()}><Printer size={13} /> Imprimir / PDF</Button>
+                </>
+              )}
             </div>
           }
         >
+          <p className="px-4 pt-3 text-xs text-slate-500">{report.desc}</p>
           <div className="no-print flex flex-wrap gap-3 border-b border-slate-100 p-3">
-            {usesRange && (
+            {has("range") && (
               <>
-                <Field label="Desde"><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-                <Field label="Hasta"><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+                <Field label="Desde"><Input type="date" value={f.from} onChange={(e) => set({ from: e.target.value })} /></Field>
+                <Field label="Hasta"><Input type="date" value={f.to} onChange={(e) => set({ to: e.target.value })} /></Field>
               </>
             )}
-            <Field label="Programa">
-              <Select value={program} onChange={(e) => setProgram(e.target.value)} className="w-52">
-                <option value="">Todos</option>
-                {db.programs.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
-              </Select>
-            </Field>
-            {usesStatus && (
-              <Field label="Estado">
-                <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-40">
+            {has("date") && <Field label={report.id.startsWith("stu_sap") ? "A la fecha" : "Fecha"}><Input type="date" value={f.to} onChange={(e) => set({ to: e.target.value || today() })} /></Field>}
+            {has("year") && (
+              <Field label="Año">
+                <Select value={f.year} onChange={(e) => set({ year: Number(e.target.value) })} className="w-28">
+                  {(years.length ? years : [f.year]).map((y) => <option key={y} value={y}>{y}</option>)}
+                </Select>
+              </Field>
+            )}
+            {(has("program") || has("programRequired")) && (
+              <Field label="Programa">
+                <Select value={f.program} onChange={(e) => set({ program: e.target.value, student: "" })} className="w-52">
+                  {has("program") && <option value="">Todos</option>}
+                  {has("programRequired") && !f.program && <option value="">— elegir —</option>}
+                  {db.programs.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+                </Select>
+              </Field>
+            )}
+            {has("schedule") && (
+              <Field label="Horario">
+                <Select value={f.schedule} onChange={(e) => set({ schedule: e.target.value })} className="w-36">
                   <option value="">Todos</option>
-                  {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  {db.schedules.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </Select>
+              </Field>
+            )}
+            {has("status") && (
+              <Field label="Estado">
+                <Select value={f.status} onChange={(e) => set({ status: e.target.value, student: "" })} className="w-36">
+                  <option value="">Todos</option>
+                  {Object.entries(STATUS_ES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  <option value="NoStart">No-start (sin horas)</option>
+                </Select>
+              </Field>
+            )}
+            {has("student") && (
+              <Field label="Estudiante">
+                <Select value={f.student} onChange={(e) => set({ student: e.target.value })} className="w-56">
+                  <option value="">Todos ({studentOptions.length})</option>
+                  {studentOptions.map((s) => <option key={s.id} value={s.id}>{fullName(s)} · #{s.badge}</option>)}
+                </Select>
+              </Field>
+            )}
+            {has("sort") && (
+              <Field label="Ordenar por">
+                <Select value={f.sort} onChange={(e) => set({ sort: e.target.value as Filters["sort"] })} className="w-32">
+                  <option value="name">Nombre</option>
+                  <option value="number">Número</option>
                 </Select>
               </Field>
             )}
           </div>
-          {rid === "labels" ? (
-            <div className="grid grid-cols-1 gap-2 p-4 sm:grid-cols-3">
+
+          {/* Encabezado que solo aparece al imprimir */}
+          <div className="hidden px-4 pt-3 text-xs text-slate-600 print:block">
+            {db.settings.schoolName} · {report.name} · {has("range") ? `${fmtDate(f.from)} – ${fmtDate(f.to)}` : has("date") ? fmtDate(f.to) : has("year") ? f.year : ""} · Impreso {fmtDate(today())}
+          </div>
+          {result.note && <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{result.note}</div>}
+
+          {report.kind === "signin" ? (
+            <div className="space-y-2 p-4 text-sm">
+              {db.schedules.filter((s) => !f.schedule || s.id === f.schedule).map((s) => (
+                <div key={s.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
+                  <span className="font-medium">{s.name} ({s.start}–{s.end})</span>
+                  <Badge tone="blue">{expectedOn(db, f.to, s.id).length} estudiantes</Badge>
+                </div>
+              ))}
+              <p className="text-xs text-slate-500">Se abre una ventana para imprimir con una página por horario. También está en Asistencia › Check Attendance.</p>
+            </div>
+          ) : report.kind === "labels" ? (
+            <div className="grid grid-cols-1 gap-2 p-4 sm:grid-cols-3 print:grid-cols-3 print:gap-0 print:p-0">
               {labelStudents.map((s) => (
-                <div key={s.id} className="rounded border border-dashed border-slate-300 p-3 text-sm leading-tight">
+                <div key={s.id} className="rounded border border-dashed border-slate-300 p-3 text-sm leading-tight print:h-[1in] print:rounded-none print:border-0 print:px-4 print:py-2">
                   <div className="font-medium">{s.firstName} {s.lastName}</div>
                   <div>{s.address1 || "—"}</div>
                   {s.address2 && <div>{s.address2}</div>}
@@ -161,15 +181,16 @@ export default function Reports() {
             </div>
           ) : rows.length ? (
             <Table>
-              <thead><tr>{Object.keys(rows[0]).map((k) => <Th key={k}>{k}</Th>)}</tr></thead>
+              <thead><tr>{columns.map((k) => <Th key={k}>{k}</Th>)}</tr></thead>
               <tbody>
-                {rows.map((r, i) => <tr key={i}>{Object.values(r).map((v, j) => <Td key={j} className="text-xs">{v}</Td>)}</tr>)}
+                {rows.map((r, i) => <tr key={i}>{columns.map((k) => <Td key={k} className={cx("text-xs", typeof r[k] === "number" && "tabular-nums")}>{r[k]}</Td>)}</tr>)}
+                {result.totals && <tr className="bg-slate-50 font-semibold">{columns.map((k) => <Td key={k} className="text-xs tabular-nums">{result.totals![k] ?? ""}</Td>)}</tr>}
               </tbody>
             </Table>
           ) : (
             <Empty>Sin datos para estos filtros.</Empty>
           )}
-          {rid !== "labels" && rows.length > 0 && <div className="px-4 py-2 text-xs text-slate-500">{rows.length} filas</div>}
+          {!report.kind && rows.length > 0 && <div className="px-4 py-2 text-xs text-slate-500">{rows.length} filas</div>}
         </Card>
       </div>
     </div>

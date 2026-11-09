@@ -121,6 +121,7 @@ export function ensurePhase1(db: DB): DB {
     ...db,
     programs,
     selections: db.selections ?? seedSelections(),
+    disbursementBatches: db.disbursementBatches ?? [],
     settings: {
       ...db.settings,
       autoLogoutMinutes: db.settings.autoLogoutMinutes ?? 30,

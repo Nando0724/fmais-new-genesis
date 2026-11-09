@@ -62,11 +62,11 @@ Mientras los valores de SAP no estén confirmados, el programa muestra la etique
 | **Estudiantes** | Lista con búsqueda (nombre en cualquier orden, badge, email, celular) y filtros por estado, registro, programa, horario, instructor, balance pendiente, ledger por verificar, último SAP bajo, probation, por graduar y ausencias. Exportación a CSV. Los instructores no ven balances. |
 | **Nuevo estudiante** | Trae los datos de un lead del CRM, marca en amarillo los campos obligatorios, avisa si ya existe alguien con el mismo email o celular y permite elegir si se cargan los costos del programa (auto-ledger). Para quien ya venía cursando en Genesis se ponen las horas hechas y la fecha desde la que se cuenta la asistencia, sin cargar día por día. |
 | **Ficha del estudiante** | Encabezado igual al de Genesis y pestañas: Resumen, Detalle, Inscripción, Académico, Asistencia, **SAP**, Ledger y pagos, Colocación, Documentos, Notas e Historial. |
-| **Cobros** | Planes de pago automáticos y por Zelle, con estado (vencido, vence pronto, al día). Envía recordatorios de Zelle en lote, ejecuta los cobros automáticos del día (simulados), registra los Zelle recibidos y guarda el registro de emails. |
+| **Cobros** | Planes de pago automáticos y por Zelle, con estado (vencido, vence pronto, al día). Envía recordatorios de Zelle en lote, ejecuta los cobros automáticos del día (simulados), registra los Zelle recibidos y guarda el registro de emails. **Desembolso en lote**: un cheque o transferencia (beca, ayuda financiera, empleador) repartido entre varios estudiantes, con cuenta e institucional por línea, "sin repartir" en vivo (no se procesa si no cuadra) y recibos imprimibles. |
 | **Asistencia** | **En lote** por fecha, programa y horario: viene prellenada con el horario, se marca Presente / Ausente / Excusado y "Procesar" guarda solo lo nuevo o cambiado. **Check Attendance**: quién no ha llegado (con teléfono y WhatsApp) y quién está en clase, con botones Llegó / Salió. **Hojas de firma** imprimibles. **Salidas sin marcar** para completar. **Alertas**: ausencias consecutivas, asistencia bajo el mínimo del SAP, por graduar, midpoints y LOA. |
 | **Académico** | **Notas en lote**: programa → tipo (Exam / Written / Requirement) → función → % o unidades para todos los inscritos; "Procesar" guarda solo lo nuevo o cambiado. **Midpoints y SAP**: cola de los que cruzaron un midpoint, con su SAP a esa fecha; se seleccionan, se calcula el SAP en lote y quedan revisados (con "Volver a mostrar"). **Colocación**: graduados por rango de fecha con State Board y empleo, % aprobados y % colocados, exportable. Los instructores ven solo a sus estudiantes y no ven colocación. |
 | **Centro de alertas** | En el Dashboard, según el rol: salidas sin marcar, ausencias, asistencia baja, midpoints por revisar, SAP Critical sin probation, por graduar, LOA que terminan, pagos vencidos, asientos por verificar y licencia por vencer. Cada aviso lleva a donde se resuelve. |
-| **Reportes** | Roster, asistencia por rango de fechas, morosidad, graduados y colocación, admisiones por fuente, ingresos y etiquetas. Todos se exportan a CSV o se imprimen. |
+| **Reportes** | Catálogo del manual de Genesis agrupado en Académico (completados, resumen, Exam / Written / Requirements por programa), Asistencia (detalle y resumen con programadas vs. asistidas), Ledger (pagos con aviso de "por verificar", resumen de pagos, resumen por programa, morosidad, datos 1098-T), Estudiantes (roster incluido no-start, badge #, locker #, educación, etnia, LOA, colocación, evaluación SAP a una fecha, resumen SAP), Operación (ausentes y presentes del día, hojas de firma, etiquetas) y Admisiones. Filtros por fechas, programa, horario, estado y estudiante; filas de totales; CSV (abre en Excel) e impresión / PDF. Los de Ledger solo los ven Dueño, Administración y Finanzas. |
 | **Configuración** | Escuela (con licencia estatal y aviso de vencimiento) · **Catálogos** (etnia, dependencia, empresas, cuentas… se desactivan, no se borran) · Programas (agregar, editar o copiar) con pestañas Información, Costos (cargar al inscribir / institucional), Escala de notas, Académico (Exam / Written / Requirement) y SAP y midpoints · Horarios · Feriados y ajustes (todo el día o unas horas, para todos o un programa) · Usuarios y permisos · Plantillas de email · Automatizaciones (incluye cierre de sesión por inactividad) · Fuentes de leads · Importación CSV y respaldo. |
 
 ## Equivalencias con Genesis
@@ -81,7 +81,7 @@ Mientras los valores de SAP no estén confirmados, el programa muestra la etique
 | Maintenance › Check Midpoints · Chk MidPnt | Académico › Midpoints y SAP |
 | Maintenance › Labels · Labels | Reportes › Etiquetas |
 | Maintenance › Reports · R-Reports | Reportes |
-| Tasks › Ledger | Ficha › Ledger y pagos, Cobros |
+| Tasks › Ledger | Ficha › Ledger y pagos, Cobros › Desembolso en lote |
 | Tasks › Academics | Académico › Notas en lote, Ficha › Académico |
 | Tasks › Attendance · Attendance | Asistencia › Hoja diaria, Ficha › Asistencia |
 | Tasks › Student Leads | Admisiones (CRM) |
@@ -150,12 +150,21 @@ Mientras los valores de SAP no estén confirmados, el programa muestra la etique
 
 Reglas del SAP en la demo (ver especificación §5.3): académico = Exam y Written promediados (un 0 no cuenta) más Requirement medido contra lo esperado para las horas que lleva, con los pesos del programa; si falta una categoría su peso se reparte. Asistencia = asistidas / programadas. Nivel: debajo del mínimo Critical = **Critical**; entre Critical y OK = **Bajo OK**; luego **OK** y **Superior**. El general es el más bajo. Los midpoints alcanzados hace más de 3 semanas se marcan revisados al cargar la demo, para que la cola empiece con lo reciente.
 
+**Fase 6 (hecha):**
+
+| Genesis (manual) | Aquí |
+|---|---|
+| Tasks › Ledger (un cheque para varios estudiantes, "Unallocated") | Cobros › Desembolso en lote |
+| R-Reports (Academic, Attendance, Ledger, Students) | Reportes, con el nombre de Genesis en cada uno |
+| ITA › Check Attendance / Present / Sign-In Sheets | Reportes › Operación (y Asistencia › Check Attendance) |
+| Labels | Reportes › Etiquetas (3 columnas, tipo Avery 5160) |
+| — | Reportes › Datos 1098-T (nuevo; confirmar con el contador) |
+
 **Pendiente de construir (especificación v0.3):**
 
 | Genesis (manual) | Aquí (planeado) |
 |---|---|
-| Tasks › Ledger (desembolso de un cheque entre varios estudiantes) | Desembolso en lote (fase 6) |
-| 29 reportes del manual | Reportes |
+| Reportes de inventario (4) | Aparecen en Reportes como "pronto" (fase 10) |
 | Inventory · Services · POS | Inventario (fase 10, si se confirma) |
 | ITA Setup (reloj con badge, redondeo de swipes) | Kiosco opcional (fase 11) |
 
@@ -171,6 +180,7 @@ src/
   lib/store.tsx     capa de datos (localStorage en la demo) + permisos por rol
   lib/calc.ts       horas (programadas con feriados parciales), balance, ausencias consecutivas, midpoints, graduación proyectada
   lib/sap.ts        SAP (académico y asistencia), cola de midpoints
+  lib/reports.ts    catálogo de reportes (una función por reporte)
   lib/alerts.ts     Centro de alertas por rol
   lib/config.ts     catálogos, escala de notas, SAP y costos por defecto + migración de datos guardados
   lib/actions.ts    crear estudiante, registrar pago, recordatorios
