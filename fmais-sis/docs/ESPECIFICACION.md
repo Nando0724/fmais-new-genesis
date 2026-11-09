@@ -1,6 +1,6 @@
 # FMAIS — Sistema Administrativo Centralizado (reemplazo de Genesis-SMSS)
 
-**Fecha:** 2026-11-09 · **Estado:** v0.3 — especificación alineada con el manual oficial de Genesis-SMSS (`genesis-manual.pdf`, 115 págs.). Lo nuevo de v0.3 está marcado con 🆕. **Las fases 1 a 6 (§11) ya están en la demo**; el resto de lo marcado 🆕 aún no. Preguntas abiertas en §12.
+**Fecha:** 2026-11-09 · **Estado:** v0.3 — especificación alineada con el manual oficial de Genesis-SMSS (`genesis-manual.pdf`, 115 págs.). Lo nuevo de v0.3 está marcado con 🆕. **Las fases 1 a 7 (§11) ya están en la demo**; el resto de lo marcado 🆕 aún no. Preguntas abiertas en §12.
 
 ## 1. Objetivo
 
@@ -132,7 +132,8 @@ Navegación del admin:
 **Personas y CRM**
 - **people** — datos personales comunes a lead y estudiante.
 - **leads** — person_id, activo, fecha, fuente, campaña/UTM, programa, 🆕 horario y fecha de inicio deseados, etapa, representante, puntaje, próxima acción, motivo de pérdida.
-- **lead_activities** — tipo, resultado, fecha, usuario; 🆕 seguimientos con `due_date` y `completed_at`.
+- **lead_activities** — tipo, resultado, fecha, usuario.
+- **follow_ups** 🆕 — lead_id, fecha, tipo, nota, asesor, creado por/cuándo, completado por/cuándo, resultado, cancelado.
 
 **Estudiantes**
 - **students** — person_id, badge, SSN (cifrado), sexo, estado civil, etnia, lugar de nacimiento, licencia, alien #, educación, escuela secundaria, locker, combination, fecha de matrícula, FISAP (EFC, auto zero EFC, AGI, dependientes, dependency, exceptions).
@@ -315,7 +316,7 @@ El flujo completo ya se puede probar en **Marketing** (`src/pages/Marketing.tsx`
 | 4 ✅ | Asistencia **en lote** por fecha, programa y horario (prellenada con el horario, Presente / Ausente / Excusado, "Procesar" guarda solo lo nuevo o cambiado); horas programadas vs. asistidas y % de asistencia (§5.2) con horas excusadas según la política SAP; Check Attendance (quién no ha llegado con teléfono y WhatsApp, Llegó / Salió con la hora actual) y hojas de firma imprimibles; Salidas sin marcar (Check Swipes); Centro de alertas en el Dashboard según rol y los interruptores de Automatizaciones. **Hecha en la demo** (2026-11-09). |
 | 5 ✅ | Académico (Exam / Written / Requirement) individual y **en lote** (0 = completado sin nota); **SAP** en la ficha a cualquier fecha, con historial (`sap_evaluations`) y propuesta de probation; cola de **midpoints** con SAP en lote, "revisado" y "volver a mostrar" (`midpoint_events`); colocación de graduados por rango con % State Board y % colocados; alertas de midpoints por revisar y SAP Critical sin probation. **Hecha en la demo** (2026-11-09). |
 | 6 ✅ | **Desembolso en lote** en Cobros (`disbursement_batches` + `batch_id` en cada pago, sin repartir en vivo, recibos); catálogo de reportes de §5.6 con filtros, totales, CSV e impresión (los 4 de inventario quedan para la fase 10); etiquetas en 3 columnas. **Hecha en la demo** (2026-11-09). |
-| 7 | CRM de admisiones + seguimientos + integración con el portal de inscripción |
+| 7 ✅ | CRM: seguimientos con fecha y completado (`follow_ups`), vista de vencidos / hoy / próximos, plan de seguimiento automático configurable, leads activos / inactivos, horario y fecha de inicio deseados, detalle de fuente (catálogo `lead_source`), aviso de lead duplicado, métricas (embudo, respuesta, por fuente, por asesor), alerta de seguimientos vencidos; la regla de marketing "un clic crea una tarea" crea un seguimiento. El enlace con el portal de inscripción ya existía. Costo por inscrito queda para cuando haya gasto de anuncios (Meta Ads). **Hecha en la demo** (2026-11-09). |
 | 8 | Migración de datos de Genesis y corte |
 | 9 | Marketing (§9) |
 | 10 | Inventario, servicios de clínica y POS (si se confirman, §12) |

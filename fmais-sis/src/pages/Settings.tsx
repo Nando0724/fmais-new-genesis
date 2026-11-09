@@ -5,9 +5,10 @@ import { useToast } from "../components/Layout";
 import { Badge, Button, Card, Field, Input, Modal, PageHeader, Select, Table, Tabs, Td, Textarea, Th } from "../components/ui";
 import { weeklyHours } from "../lib/calc";
 import { activeOptions, costsFrom, DEFAULT_GRADE_SCALE, defaultSap, programTotal, SELECTION_INFO } from "../lib/config";
+import { DEFAULT_FOLLOWUP_PLAN, FOLLOWUP_LABEL } from "../lib/crm";
 import { canAccess, useStore, type Area } from "../lib/store";
 import {
-  SELECTION_TYPES, type GradeBand, type Holiday, type Program, type ProgramCost, type Requirement, type RequirementKind, type Role,
+  SELECTION_TYPES, type FollowUpStep, type FollowUpType, type GradeBand, type Holiday, type Program, type ProgramCost, type Requirement, type RequirementKind, type Role,
   type SapLevels, type SapPolicy, type Schedule, type Selection, type SelectionType, type Settings, type User,
 } from "../lib/types";
 import { DAY_SHORT, diffDays, downloadFile, fmtDate, money, ROLE_LABEL, today, uid } from "../lib/utils";
@@ -124,8 +125,53 @@ const AutomationTab = () => (
         { key: "autoLogoutMinutes", label: "Cerrar sesión tras minutos sin actividad (0 = nunca)", type: "number" },
       ]}
     />
+    <FollowUpPlanEditor />
   </div>
 );
+
+/** Plan de seguimiento que se crea con cada lead nuevo (CRM, fase 7). */
+function FollowUpPlanEditor() {
+  const { db, updateSettings } = useStore();
+  const toast = useToast();
+  const [plan, setPlan] = useState<FollowUpStep[]>(db.settings.followUpPlan);
+  const [auto, setAuto] = useState(db.settings.autoFollowUpPlan);
+  const set = (i: number, patch: Partial<FollowUpStep>) => setPlan(plan.map((s, k) => (k === i ? { ...s, ...patch } : s)));
+  return (
+    <Card title="Plan de seguimiento de leads">
+      <div className="space-y-3 p-4">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
+          Crear estos seguimientos al registrar un lead nuevo (a mano o desde el formulario web)
+        </label>
+        <Table>
+          <thead><tr><Th className="w-28">Día</Th><Th className="w-40">Tipo</Th><Th>Qué hacer</Th><Th></Th></tr></thead>
+          <tbody>
+            {plan.map((s, i) => (
+              <tr key={i}>
+                <Td><Input type="number" min={0} value={s.day} onChange={(e) => set(i, { day: Math.max(0, Number(e.target.value)) })} /></Td>
+                <Td>
+                  <Select value={s.type} onChange={(e) => set(i, { type: e.target.value as FollowUpType })}>
+                    {(Object.keys(FOLLOWUP_LABEL) as FollowUpType[]).map((t) => <option key={t} value={t}>{FOLLOWUP_LABEL[t]}</option>)}
+                  </Select>
+                </Td>
+                <Td><Input value={s.note} onChange={(e) => set(i, { note: e.target.value })} /></Td>
+                <Td className="text-right"><button onClick={() => setPlan(plan.filter((_, k) => k !== i))} className="text-slate-400 hover:text-red-600" aria-label="Quitar paso"><Trash2 size={14} /></button></Td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+        <p className="text-xs text-slate-500">Día 0 = el mismo día en que entra el lead. Los seguimientos de un lead se cierran solos si se pierde o se inscribe.</p>
+      </div>
+      <div className="flex justify-between border-t border-slate-100 px-4 py-3">
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setPlan([...plan, { day: (plan[plan.length - 1]?.day ?? 0) + 7, type: "call", note: "" }])}><Plus size={14} /> Agregar paso</Button>
+          <Button variant="ghost" onClick={() => setPlan(DEFAULT_FOLLOWUP_PLAN)}><RotateCcw size={14} /> Plan sugerido</Button>
+        </div>
+        <Button onClick={() => { updateSettings({ followUpPlan: [...plan].sort((a, b) => a.day - b.day).map((s) => ({ ...s, note: s.note.trim() || FOLLOWUP_LABEL[s.type] })), autoFollowUpPlan: auto }); toast("Plan de seguimiento guardado."); }}>Guardar</Button>
+      </div>
+    </Card>
+  );
+}
 
 // ── Catálogos (Selections) ─────────────────────────────────────────
 

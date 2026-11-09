@@ -64,6 +64,8 @@ export default function NewStudentModal({ open, onClose, initial, onCreated }: {
       email: l.email,
       phone: l.phone,
       programId: l.programId && db.programs.some((p) => p.id === l.programId && p.active) ? l.programId : x.programId,
+      scheduleId: l.desiredScheduleId && db.schedules.some((s) => s.id === l.desiredScheduleId) ? l.desiredScheduleId : x.scheduleId,
+      firstClass: l.desiredStart && l.desiredStart >= x.firstClass! ? l.desiredStart : x.firstClass,
     }));
   };
 

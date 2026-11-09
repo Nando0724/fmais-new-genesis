@@ -2,6 +2,7 @@
 // Todo es simulado. En producción el texto lo escribe un modelo de IA (Claude) y el envío
 // lo hace la API v3 de Constant Contact (ver docs/INTEGRACIONES.md).
 import { programTotal } from "./config";
+import { nextActionsToFollowUps } from "./crm";
 import type { Audience, Bilingual, Campaign, DB, Lead, LeadActivity, MarketingEvent, Segment, Student } from "./types";
 import { addDays, fillTemplate, money, parseDate, toISODate, today, uid } from "./utils";
 
@@ -269,14 +270,15 @@ export function mergeSend(db: DB, res: NonNullable<ReturnType<typeof simulateSen
   const lp = new Map(res.leads.map((l) => [l.id, l]));
   const sp = new Map(res.students.map((s) => [s.id, s]));
   const exists = db.campaigns.some((c) => c.id === res.campaign.id);
-  return {
+  // La regla "un clic crea una tarea" deja una próxima acción en el lead; aquí se vuelve un seguimiento.
+  return nextActionsToFollowUps({
     ...db,
     leads: db.leads.map((l) => lp.get(l.id) ?? l),
     students: db.students.map((s) => sp.get(s.id) ?? s),
     leadActivities: [...res.activities, ...db.leadActivities],
     marketingEvents: [...res.events, ...db.marketingEvents],
     campaigns: exists ? db.campaigns.map((c) => (c.id === res.campaign.id ? res.campaign : c)) : [res.campaign, ...db.campaigns],
-  };
+  });
 }
 
 export const rate = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : "—");

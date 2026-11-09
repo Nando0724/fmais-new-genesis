@@ -1,4 +1,5 @@
 // Datos de demostración 100% ficticios. Se regeneran relativos a la fecha de hoy.
+import { DEFAULT_FOLLOWUP_PLAN, ensurePhase7 } from "./crm";
 import { reviewOldMidpoints } from "./sap";
 import { costsFrom, DEFAULT_GRADE_SCALE, defaultSap, ensurePhase1, programTotal, seedSelections } from "./config";
 import { ensureMarketing } from "./seedMarketing";
@@ -351,7 +352,7 @@ export function buildSeed(): DB {
     if (last) Object.assign(last, { timeOut: undefined, hours: 0 });
   });
 
-  return reviewOldMidpoints(ensurePhase1(ensureMarketing({
+  return ensurePhase7(reviewOldMidpoints(ensurePhase1(ensureMarketing({
     version: 1,
     settings: {
       schoolName: "Florida Medical & Aesthetic International School",
@@ -363,6 +364,8 @@ export function buildSeed(): DB {
       aboutToGradHours: 40,
       reminderDaysBefore: 3,
       leadResponseMinutes: 15,
+      followUpPlan: DEFAULT_FOLLOWUP_PLAN,
+      autoFollowUpPlan: true,
       enrollmentPortalUrl: "https://thefmais-enrollment.lovable.app/",
       licenseNumber: "CIE-0000 (ejemplo)",
       licenseApproved: addDays(T, -700),
@@ -404,6 +407,7 @@ export function buildSeed(): DB {
     holidays,
     leads,
     leadActivities,
+    followUps: [],
     onlineEnrollments,
     students,
     attendance,
@@ -421,5 +425,5 @@ export function buildSeed(): DB {
     marketingTemplates: [],
     campaigns: [],
     marketingEvents: [],
-  })));
+  }))));
 }

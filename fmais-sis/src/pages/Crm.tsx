@@ -4,10 +4,13 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useToast } from "../components/Layout";
 import ConsentEditor from "../components/ConsentEditor";
 import NewStudentModal from "../components/NewStudentModal";
-import { Badge, Button, Card, cx, Drawer, Empty, Field, Input, Modal, PageHeader, Select, Table, Td, Textarea, Th, type Tone } from "../components/ui";
+import { Badge, Button, Card, cx, Drawer, Empty, Field, Input, Modal, PageHeader, Select, Table, Tabs, Td, Textarea, Th, type Tone } from "../components/ui";
 import { sendTemplate } from "../lib/actions";
+import { activeOptions } from "../lib/config";
+import { closeFor, FOLLOWUP_LABEL, isOpenLead, isPending, planFor } from "../lib/crm";
+import { CrmMetrics, FollowUpList, LeadFollowUps } from "../components/CrmFollowUps";
 import { useStore, userName } from "../lib/store";
-import { LEAD_SOURCES, LEAD_STAGES, type ActivityType, type Lead, type LeadSource, type LeadStage } from "../lib/types";
+import { LEAD_SOURCES, LEAD_STAGES, type ActivityType, type FollowUp, type Lead, type LeadSource, type LeadStage } from "../lib/types";
 import { ACTIVITY_LABEL, displayName, fmtDate, fmtDateTime, nowISO, SOURCE_LABEL, STAGE_LABEL, today, uid } from "../lib/utils";
 
 const STAGE_TONE: Record<LeadStage, Tone> = { new: "blue", contacted: "violet", tour_scheduled: "amber", toured: "amber", applied: "brand", enrolled: "green", lost: "slate" };
@@ -31,6 +34,8 @@ export default function Crm() {
   const [owner, setOwner] = useState(user?.role === "admissions" ? user.id : "");
   const [program, setProgram] = useState("");
   const [showLost, setShowLost] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
+  const [tab, setTab] = useState<"pipeline" | "followups" | "metrics">((params.get("tab") as "followups") || "pipeline");
   const [creating, setCreating] = useState(false);
   const [dragId, setDragId] = useState<string>();
   const openId = params.get("lead");
@@ -44,14 +49,26 @@ export default function Crm() {
       .filter((l) => !source || l.source === source)
       .filter((l) => !owner || (owner === "none" ? !l.ownerId : l.ownerId === owner))
       .filter((l) => !program || l.programId === program)
+      .filter((l) => showInactive || l.active !== false)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [db.leads, q, source, owner, program]);
+  }, [db.leads, q, source, owner, program, showInactive]);
+
+  // Próximo seguimiento pendiente de cada lead.
+  const nextFollowUp = useMemo(() => {
+    const m = new Map<string, FollowUp>();
+    db.followUps.filter(isPending).forEach((f) => { const cur = m.get(f.leadId); if (!cur || f.due < cur.due) m.set(f.leadId, f); });
+    return m;
+  }, [db.followUps]);
+  const T = today();
+  const myOverdue = db.followUps.filter((f) => isPending(f) && f.due <= T).filter((f) => { const l = db.leads.find((x) => x.id === f.leadId); return l && isOpenLead(l) && (user?.role !== "admissions" || (f.ownerId ?? l.ownerId) === user.id); }).length;
 
   const slaBreached = (l: Lead) => l.stage === "new" && !l.firstContactAt && Date.now() - new Date(l.createdAt).getTime() > db.settings.leadResponseMinutes * 60000;
 
   const moveStage = (lead: Lead, stage: LeadStage, note?: string) => {
     if (lead.stage === stage) return;
     save("leads", { ...lead, stage, firstContactAt: lead.firstContactAt ?? (stage !== "new" ? nowISO() : undefined) }, "stage");
+    // Perdido o inscrito: sus seguimientos pendientes ya no aplican.
+    if (stage === "lost" || stage === "enrolled") saveMany("followUps", closeFor(db, lead.id, stage === "lost" ? "Lead perdido" : "Inscrito", user?.id));
     save("leadActivities", { id: uid(), leadId: lead.id, type: "stage", note: note ?? `${STAGE_LABEL[lead.stage]} → ${STAGE_LABEL[stage]}`, at: nowISO(), userId: user?.id });
   };
 
@@ -87,6 +104,20 @@ export default function Crm() {
         }
       />
 
+      <div className="mb-4">
+        <Tabs
+          tabs={[
+            { id: "pipeline" as const, label: "Pipeline" },
+            { id: "followups" as const, label: <>Seguimientos {myOverdue > 0 && <Badge tone="red">{myOverdue}</Badge>}</> },
+            { id: "metrics" as const, label: "Métricas" },
+          ]}
+          value={tab}
+          onChange={(t) => setTab(t as typeof tab)}
+        />
+      </div>
+      {tab === "followups" && <FollowUpList onOpen={(id) => setParams({ lead: id })} />}
+      {tab === "metrics" && <CrmMetrics />}
+      {tab === "pipeline" && (<>
       <Card className="mb-4">
         <div className="flex flex-wrap items-center gap-2 p-3">
           <Input placeholder="Buscar nombre, email o teléfono…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
@@ -105,6 +136,9 @@ export default function Crm() {
           </Select>
           <label className="flex items-center gap-1.5 text-sm text-slate-600">
             <input type="checkbox" checked={showLost} onChange={(e) => setShowLost(e.target.checked)} /> Ver perdidos
+          </label>
+          <label className="flex items-center gap-1.5 text-sm text-slate-600">
+            <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} /> Ver inactivos
           </label>
           <div className="ml-auto flex rounded-lg border border-slate-300 p-0.5">
             <button onClick={() => setView("kanban")} className={cx("rounded-md p-1.5", view === "kanban" && "bg-slate-100")} aria-label="Kanban"><Columns3 size={16} /></button>
@@ -149,7 +183,9 @@ export default function Crm() {
                       <div className="mt-2 flex flex-wrap items-center gap-1">
                         <Badge tone={SOURCE_TONE[l.source]}>{SOURCE_LABEL[l.source]}</Badge>
                         {slaBreached(l) && <Badge tone="red">Sin contactar</Badge>}
-                        {l.nextActionDate && l.nextActionDate <= today() && l.stage !== "enrolled" && l.stage !== "lost" && <Badge tone="amber">Tarea</Badge>}
+                        {nextFollowUp.get(l.id) && isOpenLead(l) && nextFollowUp.get(l.id)!.due < T && <Badge tone="red">Seguimiento vencido</Badge>}
+                        {nextFollowUp.get(l.id) && isOpenLead(l) && nextFollowUp.get(l.id)!.due === T && <Badge tone="amber">Seguimiento hoy</Badge>}
+                        {l.active === false && <Badge>Inactivo</Badge>}
                       </div>
                       <div className="mt-1.5 text-[11px] text-slate-400">{l.ownerId ? userName(db, l.ownerId) : "Sin asignar"}</div>
                     </button>
@@ -164,7 +200,7 @@ export default function Crm() {
         <Card>
           <Table>
             <thead>
-              <tr><Th>Nombre</Th><Th>Contacto</Th><Th>Fuente</Th><Th>Programa</Th><Th>Etapa</Th><Th>Asesor</Th><Th>Creado</Th><Th>Próxima acción</Th></tr>
+              <tr><Th>Nombre</Th><Th>Contacto</Th><Th>Fuente</Th><Th>Programa</Th><Th>Etapa</Th><Th>Asesor</Th><Th>Creado</Th><Th>Próximo seguimiento</Th></tr>
             </thead>
             <tbody>
               {leads.filter((l) => showLost || l.stage !== "lost").map((l) => (
@@ -176,7 +212,7 @@ export default function Crm() {
                   <Td><Badge tone={STAGE_TONE[l.stage]}>{STAGE_LABEL[l.stage]}</Badge></Td>
                   <Td className="text-xs">{userName(db, l.ownerId)}</Td>
                   <Td className="text-xs">{fmtDateTime(l.createdAt)}</Td>
-                  <Td className="text-xs">{l.nextAction ? `${l.nextAction} · ${fmtDate(l.nextActionDate)}` : "—"}</Td>
+                  <Td className="text-xs">{(() => { const f = nextFollowUp.get(l.id); return f && isOpenLead(l) ? <span className={f.due < T ? "text-red-600" : ""}>{FOLLOWUP_LABEL[f.type]} · {fmtDate(f.due)}</span> : "—"; })()}</Td>
                 </tr>
               ))}
             </tbody>
@@ -185,6 +221,8 @@ export default function Crm() {
         </Card>
       )}
 
+      </>)}
+
       <NewLeadModal open={creating} onClose={() => setCreating(false)} onCreated={(id) => setParams({ lead: id })} />
       {openLead && <LeadDrawer lead={openLead} onClose={() => setParams({})} moveStage={moveStage} />}
     </div>
@@ -192,14 +230,20 @@ export default function Crm() {
 }
 
 function NewLeadModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (id: string) => void }) {
-  const { db, save, user } = useStore();
-  const [f, setF] = useState({ firstName: "", lastName: "", email: "", phone: "", source: "phone" as LeadSource, programId: "", language: "es" as "es" | "en" });
+  const { db, save, saveMany, user } = useStore();
+  const blank = { firstName: "", lastName: "", email: "", phone: "", source: "phone" as LeadSource, sourceDetail: "", programId: "", desiredScheduleId: "", desiredStart: "", language: "es" as "es" | "en" };
+  const [f, setF] = useState(blank);
+  const dup = (f.email || f.phone.replace(/\D/g, "").length >= 7) && db.leads.find((l) => (f.email && l.email.toLowerCase() === f.email.toLowerCase()) || (f.phone.replace(/\D/g, "").length >= 7 && l.phone.replace(/\D/g, "").endsWith(f.phone.replace(/\D/g, "").slice(-10))));
   const submit = () => {
-    const id = uid();
-    save("leads", { id, ...f, programId: f.programId || undefined, stage: "new", ownerId: user?.role === "admissions" ? user.id : undefined, createdAt: nowISO() });
+    const lead: Lead = {
+      id: uid(), ...f, programId: f.programId || undefined, desiredScheduleId: f.desiredScheduleId || undefined, desiredStart: f.desiredStart || undefined, sourceDetail: f.sourceDetail || undefined,
+      stage: "new", ownerId: user?.role === "admissions" ? user.id : undefined, createdAt: nowISO(),
+    };
+    save("leads", lead);
+    if (db.settings.autoFollowUpPlan) saveMany("followUps", planFor(lead, db.settings.followUpPlan, user?.id), "Plan de seguimiento");
     onClose();
-    setF({ ...f, firstName: "", lastName: "", email: "", phone: "" });
-    onCreated(id);
+    setF({ ...blank, source: f.source });
+    onCreated(lead.id);
   };
   return (
     <Modal open={open} onClose={onClose} title="Nuevo lead" footer={<><Button variant="secondary" onClick={onClose}>Cancelar</Button><Button disabled={!f.firstName || (!f.phone && !f.email)} onClick={submit}>Guardar</Button></>}>
@@ -218,13 +262,28 @@ function NewLeadModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
             <option value="es">Español</option><option value="en">English</option>
           </Select>
         </Field>
-        <Field label="Programa de interés" className="col-span-2">
-          <Select value={f.programId} onChange={(e) => setF({ ...f, programId: e.target.value })}>
+        <Field label="Detalle de la fuente">
+          <Select value={f.sourceDetail} onChange={(e) => setF({ ...f, sourceDetail: e.target.value })}>
             <option value="">—</option>
-            {db.programs.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {activeOptions(db, "lead_source").map((o) => <option key={o.id} value={o.value}>{o.value}</option>)}
           </Select>
         </Field>
+        <Field label="Programa de interés">
+          <Select value={f.programId} onChange={(e) => setF({ ...f, programId: e.target.value })}>
+            <option value="">—</option>
+            {db.programs.filter((p) => p.active).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </Select>
+        </Field>
+        <Field label="Horario deseado">
+          <Select value={f.desiredScheduleId} onChange={(e) => setF({ ...f, desiredScheduleId: e.target.value })}>
+            <option value="">—</option>
+            {db.schedules.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.start}–{s.end})</option>)}
+          </Select>
+        </Field>
+        <Field label="Fecha de inicio deseada"><Input type="date" value={f.desiredStart} onChange={(e) => setF({ ...f, desiredStart: e.target.value })} /></Field>
       </div>
+      {dup && <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">Ya existe un lead con ese email o teléfono: <b>{displayName(dup)}</b> ({STAGE_LABEL[dup.stage]}). Revisa antes de crear otro.</p>}
+      {db.settings.autoFollowUpPlan && <p className="mt-2 text-xs text-slate-500">Se crearán {db.settings.followUpPlan.length} seguimientos según el plan (Configuración › Automatizaciones).</p>}
     </Modal>
   );
 }
@@ -320,9 +379,27 @@ function LeadDrawer({ lead, onClose, moveStage }: { lead: Lead; onClose: () => v
             {LEAD_SOURCES.map((s) => <option key={s} value={s}>{SOURCE_LABEL[s]}</option>)}
           </Select>
         </Field>
-        <Field label="Próxima acción"><Input value={lead.nextAction ?? ""} onChange={(e) => set({ nextAction: e.target.value })} placeholder="Ej. Llamar de nuevo" /></Field>
-        <Field label="Fecha"><Input type="date" value={lead.nextActionDate ?? ""} onChange={(e) => set({ nextActionDate: e.target.value })} /></Field>
+        <Field label="Detalle de la fuente">
+          <Select value={lead.sourceDetail ?? ""} onChange={(e) => set({ sourceDetail: e.target.value || undefined })}>
+            <option value="">—</option>
+            {activeOptions(db, "lead_source", lead.sourceDetail).map((o) => <option key={o.id} value={o.value}>{o.value}</option>)}
+          </Select>
+        </Field>
+        <Field label="Activo">
+          <label className="flex h-9 items-center gap-2 text-sm text-slate-600">
+            <input type="checkbox" checked={lead.active !== false} onChange={(e) => set({ active: e.target.checked ? undefined : false })} />
+            {lead.active === false ? "Inactivo (archivado)" : "Activo"}
+          </label>
+        </Field>
+        <Field label="Horario deseado">
+          <Select value={lead.desiredScheduleId ?? ""} onChange={(e) => set({ desiredScheduleId: e.target.value || undefined })}>
+            <option value="">—</option>
+            {db.schedules.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.start}–{s.end})</option>)}
+          </Select>
+        </Field>
+        <Field label="Fecha de inicio deseada"><Input type="date" value={lead.desiredStart ?? ""} onChange={(e) => set({ desiredStart: e.target.value || undefined })} /></Field>
       </div>
+      <LeadFollowUps lead={lead} onDone={(type, note) => log(type, note)} />
       <ConsentEditor value={lead} onChange={(patch) => set(patch)} />
       <div className="mt-2 text-xs text-slate-400">
         Creado {fmtDateTime(lead.createdAt)}{lead.campaign ? ` · Campaña: ${lead.campaign}` : ""} · Primer contacto: {lead.firstContactAt ? fmtDateTime(lead.firstContactAt) : "pendiente"}
@@ -355,7 +432,7 @@ function LeadDrawer({ lead, onClose, moveStage }: { lead: Lead; onClose: () => v
         onClose={() => setConverting(false)}
         initial={{ firstName: lead.firstName, lastName: lead.lastName, email: lead.email, phone: lead.phone, programId: lead.programId, leadId: lead.id }}
       />
-      <Modal open={losing} onClose={() => setLosing(false)} title="Marcar como perdido" footer={<><Button variant="secondary" onClick={() => setLosing(false)}>Cancelar</Button><Button variant="danger" onClick={() => { save("leads", { ...lead, stage: "lost", lostReason }); save("leadActivities", { id: uid(), leadId: lead.id, type: "stage", note: `Perdido: ${lostReason}`, at: nowISO(), userId: user?.id }); setLosing(false); }}>Confirmar</Button></>}>
+      <Modal open={losing} onClose={() => setLosing(false)} title="Marcar como perdido" footer={<><Button variant="secondary" onClick={() => setLosing(false)}>Cancelar</Button><Button variant="danger" onClick={() => { save("leads", { ...lead, stage: "lost", lostReason }); store.saveMany("followUps", closeFor(db, lead.id, `Perdido: ${lostReason}`, user?.id)); save("leadActivities",{ id: uid(), leadId: lead.id, type: "stage", note: `Perdido: ${lostReason}`, at: nowISO(), userId: user?.id }); setLosing(false); }}>Confirmar</Button></>}>
         <Field label="Motivo">
           <Select value={lostReason} onChange={(e) => setLostReason(e.target.value)}>
             {["Precio", "Horario no le sirve", "Eligió otra escuela", "No contesta", "No califica", "Otro"].map((r) => <option key={r}>{r}</option>)}

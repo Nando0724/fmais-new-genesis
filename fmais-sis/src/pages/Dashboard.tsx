@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge, Card, Empty, PageHeader, Stat } from "../components/ui";
 import { balance, consecutiveAbsences, isAboutToGrad, planStatus, remainingHours } from "../lib/calc";
+import { FOLLOWUP_LABEL, pendingFollowUps } from "../lib/crm";
 import { canAccess, useStore, userName } from "../lib/store";
 import { LEAD_SOURCES, LEAD_STAGES } from "../lib/types";
 import { addDays, addMonths, displayName, fmtDate, money, SOURCE_LABEL, STAGE_LABEL, today } from "../lib/utils";
@@ -55,10 +56,7 @@ export default function Dashboard() {
     const overdue = db.plans.filter((p) => planStatus(p, db) === "overdue");
     const absences = active.map((s) => ({ s, n: consecutiveAbsences(s, db) })).filter((x) => x.n >= db.settings.absenceThreshold).sort((a, b) => b.n - a.n);
     const aboutToGrad = active.filter((s) => isAboutToGrad(s, db));
-    const tasks = db.leads
-      .filter((l) => l.nextActionDate && l.nextActionDate <= T && l.stage !== "lost" && l.stage !== "enrolled")
-      .filter((l) => user?.role !== "admissions" || l.ownerId === user.id)
-      .sort((a, b) => a.nextActionDate!.localeCompare(b.nextActionDate!));
+    const tasks = pendingFollowUps(db, user?.role === "admissions" ? user.id : undefined).filter((x) => x.f.due <= T);
 
     const since30 = addDays(T, -30);
     const bySource = LEAD_SOURCES.filter((s) => s !== "import").map((s) => ({
@@ -127,16 +125,16 @@ export default function Dashboard() {
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <Card title="Tareas de admisiones para hoy" actions={<Link to="/crm" className="text-xs text-brand-600 hover:underline">Ver CRM</Link>}>
+        <Card title="Tareas de admisiones para hoy" actions={<Link to="/crm?tab=followups" className="text-xs text-brand-600 hover:underline">Ver seguimientos ({d.tasks.length})</Link>}>
           {d.tasks.length ? (
             <ul className="divide-y divide-slate-100">
-              {d.tasks.slice(0, 8).map((l) => (
-                <li key={l.id} className="flex items-center justify-between gap-2 px-4 py-2 text-sm">
+              {d.tasks.slice(0, 8).map(({ f, lead: l }) => (
+                <li key={f.id} className="flex items-center justify-between gap-2 px-4 py-2 text-sm">
                   <div className="min-w-0">
                     <Link to={`/crm?lead=${l.id}`} className="font-medium text-slate-800 hover:underline">{displayName(l)}</Link>
-                    <div className="truncate text-xs text-slate-500">{l.nextAction} · {userName(db, l.ownerId)}</div>
+                    <div className="truncate text-xs text-slate-500">{FOLLOWUP_LABEL[f.type]}: {f.note} · {userName(db, f.ownerId ?? l.ownerId)}</div>
                   </div>
-                  {l.nextActionDate! < T ? <Badge tone="red">Atrasada</Badge> : <Badge tone="blue">Hoy</Badge>}
+                  {f.due < T ? <Badge tone="red">Atrasada</Badge> : <Badge tone="blue">Hoy</Badge>}
                 </li>
               ))}
             </ul>

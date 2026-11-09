@@ -1,6 +1,7 @@
 // Centro de alertas: reemplaza las ventanas que Genesis abre al iniciar sesión
 // (Check Swipes, Check Midpoints, Consecutive Absences, About To Grad…).
 import { attendancePct, consecutiveAbsences, isAboutToGrad, liveLedger, missingOuts, needsVerification, planStatus, programOf } from "./calc";
+import { pendingFollowUps } from "./crm";
 import { lastSap, pendingMidpoints } from "./sap";
 import type { DB, User } from "./types";
 import { addDays, diffDays, today } from "./utils";
@@ -48,6 +49,11 @@ export function buildAlerts(db: DB, user?: User): Alert[] {
     if (grad.length) out.push({ id: "about_to_grad", title: "Por graduar", detail: `Les faltan ${db.settings.aboutToGradHours} horas o menos.`, count: grad.length, tone: "green", to: "/attendance?tab=alerts" });
     const loa = db.students.filter((s) => mine(s.id) && s.loas.some((l) => l.end && l.end >= T && l.end <= addDays(T, 14)));
     if (loa.length) out.push({ id: "loa_ending", title: "LOA que terminan pronto", detail: "Vuelven a clase en los próximos 14 días.", count: loa.length, tone: "blue", to: "/attendance?tab=alerts" });
+  }
+
+  if (["owner", "admin", "admissions"].includes(role)) {
+    const fu = pendingFollowUps(db, role === "admissions" ? user.id : undefined).filter((x) => x.f.due < T);
+    if (fu.length) out.push({ id: "followups_overdue", title: "Seguimientos de leads vencidos", detail: role === "admissions" ? "Tus seguimientos con fecha pasada." : "Seguimientos de admisiones con fecha pasada.", count: fu.length, tone: "amber", to: "/crm?tab=followups" });
   }
 
   if (FINANCE.includes(role)) {

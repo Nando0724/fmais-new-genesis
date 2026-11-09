@@ -1,5 +1,6 @@
 // Operaciones de negocio que tocan varias colecciones a la vez.
 import { advanceDue, balance, nextBadge, nextReceipt } from "./calc";
+import { closeFor } from "./crm";
 import type { useStore } from "./store";
 import type { EmailLog, LedgerEntry, PaymentMethod, PaymentPlan, Student } from "./types";
 import { addDays, addMonths, displayName, fillTemplate, fmtDate, money, nowISO, today, uid } from "./utils";
@@ -131,6 +132,7 @@ export function createStudent(store: Store, input: NewStudentInput): Student {
     const lead = db.leads.find((l) => l.id === input.leadId);
     if (lead) {
       store.save("leads", { ...lead, stage: "enrolled", studentId: student.id }, "convert");
+      store.saveMany("followUps", closeFor(db, lead.id, "Inscrito", user?.id));
       store.save("leadActivities", { id: uid(), leadId: lead.id, type: "stage", note: `Inscrito como estudiante · badge #${student.badge}`, at: nowISO(), userId: user?.id });
     }
     const oe = db.onlineEnrollments.find((o) => o.id === (input.onlineEnrollmentId ?? lead?.enrollmentId));

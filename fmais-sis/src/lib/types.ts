@@ -131,13 +131,19 @@ export interface Lead extends MarketingConsent {
   language: "es" | "en";
   source: LeadSource;
   campaign?: string;
+  sourceDetail?: string; // catálogo lead_source: dónde exactamente (Instagram, feria, referido por…)
   programId?: string;
+  desiredScheduleId?: string; // horario deseado (Genesis: Shift)
+  desiredStart?: string; // fecha de inicio deseada
+  active?: boolean; // undefined = activo. Inactivo = se archiva sin perderlo (Genesis: Active / Inactive)
   stage: LeadStage;
   ownerId?: string;
   createdAt: string; // ISO
   firstContactAt?: string;
+  /** @deprecated Se convierte en un FollowUp al cargar (fase 7). */
   nextAction?: string;
-  nextActionDate?: string; // YYYY-MM-DD
+  /** @deprecated */
+  nextActionDate?: string;
   lostReason?: string;
   studentId?: string;
   enrollmentId?: string;
@@ -152,6 +158,30 @@ export interface LeadActivity {
   note: string;
   at: string;
   userId?: string;
+}
+
+/** Seguimiento con fecha (Genesis: Follow Up). Pendiente hasta que se completa o se cancela. */
+export type FollowUpType = "call" | "whatsapp" | "email" | "sms" | "tour" | "other";
+
+export interface FollowUp {
+  id: string;
+  leadId: string;
+  due: string; // YYYY-MM-DD
+  type: FollowUpType;
+  note: string;
+  ownerId?: string; // asesor responsable (por defecto el del lead)
+  createdAt: string;
+  createdBy?: string;
+  completedAt?: string;
+  completedBy?: string;
+  result?: string; // qué pasó al completarlo
+  canceled?: boolean; // se cerró sin hacerse (lead perdido, inscrito o reprogramado)
+}
+
+export interface FollowUpStep {
+  day: number; // días después de crear el lead
+  type: FollowUpType;
+  note: string;
 }
 
 // Inscripción en línea (lo que hoy hace el portal de enrollment, 7 pasos).
@@ -427,6 +457,8 @@ export interface Settings {
   aboutToGradHours: number; // horas restantes para "por graduar"
   reminderDaysBefore: number; // días antes del vencimiento para recordar Zelle
   leadResponseMinutes: number; // SLA de primer contacto
+  followUpPlan: FollowUpStep[]; // plan de seguimiento que se crea con cada lead nuevo
+  autoFollowUpPlan: boolean;
   enrollmentPortalUrl: string;
   templates: Record<string, { subject: string; body: string }>;
   // Licencia estatal y datos corporativos (Maintenance › School)
@@ -537,6 +569,7 @@ export interface DB {
   holidays: Holiday[];
   leads: Lead[];
   leadActivities: LeadActivity[];
+  followUps: FollowUp[];
   onlineEnrollments: OnlineEnrollment[];
   students: Student[];
   attendance: AttendanceRecord[];

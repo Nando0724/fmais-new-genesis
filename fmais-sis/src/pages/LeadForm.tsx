@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Button, Field, Input, Select } from "../components/ui";
+import { planFor } from "../lib/crm";
 import { useStore } from "../lib/store";
+import type { Lead } from "../lib/types";
 import { nowISO, uid } from "../lib/utils";
 
 /**
@@ -8,7 +10,7 @@ import { nowISO, uid } from "../lib/utils";
  * y envía a la función `lead-intake` (ver docs/INTEGRACIONES.md). Aquí escribe directo al CRM de la demo.
  */
 export default function LeadForm() {
-  const { db, save } = useStore();
+  const { db, save, saveMany } = useStore();
   const [lang, setLang] = useState<"es" | "en">("es");
   const [f, setF] = useState({ firstName: "", lastName: "", email: "", phone: "", programId: "" });
   const [sent, setSent] = useState(false);
@@ -18,8 +20,10 @@ export default function LeadForm() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    save("leads", { id: uid(), ...f, programId: f.programId || undefined, language: lang, source: "web_form", campaign: utm, stage: "new", createdAt: nowISO(),
-      marketingOptIn: optIn, optInAt: optIn ? nowISO() : undefined, optInSource: optIn ? "Formulario web" : undefined });
+    const lead: Lead = { id: uid(), ...f, programId: f.programId || undefined, language: lang, source: "web_form", campaign: utm, stage: "new", createdAt: nowISO(),
+      marketingOptIn: optIn, optInAt: optIn ? nowISO() : undefined, optInSource: optIn ? "Formulario web" : undefined };
+    save("leads", lead);
+    if (db.settings.autoFollowUpPlan) saveMany("followUps", planFor(lead, db.settings.followUpPlan));
     setSent(true);
   };
 

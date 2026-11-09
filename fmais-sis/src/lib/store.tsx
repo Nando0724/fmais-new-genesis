@@ -2,6 +2,7 @@
 // este archivo por llamadas a Supabase (mismas colecciones, ver supabase/schema.sql).
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ensurePhase1 } from "./config";
+import { ensurePhase7 } from "./crm";
 import { ensurePhase5 } from "./sap";
 import { buildSeed } from "./seed";
 import { ensureMarketing } from "./seedMarketing";
@@ -47,7 +48,7 @@ function load(): DB {
   try {
     const raw = localStorage.getItem(DB_KEY);
     // ensureMarketing completa datos guardados antes de que existiera el módulo de marketing.
-    if (raw) return ensurePhase5(ensurePhase1(ensureMarketing(JSON.parse(raw))));
+    if (raw) return ensurePhase7(ensurePhase5(ensurePhase1(ensureMarketing(JSON.parse(raw)))));
   } catch {
     /* almacenamiento no disponible */
   }
